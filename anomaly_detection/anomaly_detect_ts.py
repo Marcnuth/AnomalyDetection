@@ -231,6 +231,14 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     assert data.size >= num_obs_per_period * 2, 'Anomaly detection needs at least 2 periods worth of data'
     assert not data[data.isnull()], 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
+    # conversion
+    if direction == 'pos':
+        one_tail, upper_tail = True, True
+    elif direction == 'neg':
+        one_tail, upper_tail = True, False
+    else:
+        one_tail, upper_tail = False, True
+
     # -- Step 1: Decompose data. This returns a univarite remainder which will be used for anomaly detection. Optionally, we might NOT decompose.
     # Note: R use stl, but here we will use MA, the result may be different TODO.. Here need improvement
     decomposed = sm.tsa.seasonal_decompose(data)
@@ -240,14 +248,37 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     max_outliers = np.trunc(data.size * k)
     assert not max_outliers, 'With longterm=TRUE, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
 
-    # TODO.. 
+    R_idx = list(range(1, max_outliers))
+    num_anoms = 0
 
+    # Compute test statistic until r=max_outliers values have been
+    # removed from the sample.
+
+    for i in range(max_outliers):
+        if verbose:
+            print(i, '/', max_outliers, ' completed')
+
+        if not data.mad:
+            break
+
+        if not one_tail:
+            ares = abs(data - data.median())
+        elif upper_tail:
+            ares = data - data.median()
+        else:
+            ares = data.median() - data
+
+        ares = ares / data.mad()
+
+        tmp_anom_index = ares[ares.values == ares.max()].index
+        R_idx[tmp_anom_index] = data.loc[tmp_anom_index]
+
+        data.drop(tmp_anom_index, inplace=True)
+
+        # Compute critical value.
+        p = 1 - alpha / (n - i + 1) if one_tail else (1 - alpha / (2 * (n - i + 1)))
+
+        # TODO..
     
     
     
-    if direction == 'pos':
-        one_tail, upper_tail = True, True
-    elif direction == 'neg':
-        one_tail, upper_tail = True, False
-    else:
-        one_tail, upper_tail = False, True
