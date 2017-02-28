@@ -124,6 +124,7 @@ Examples:
 '''
 
 import numpy as np
+import scipy as sp
 import pandas as pd
 import datetime
 import statsmodels.api as sm
@@ -239,6 +240,8 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     else:
         one_tail, upper_tail = False, True
 
+    n = data.size
+
     # -- Step 1: Decompose data. This returns a univarite remainder which will be used for anomaly detection. Optionally, we might NOT decompose.
     # Note: R use stl, but here we will use MA, the result may be different TODO.. Here need improvement
     decomposed = sm.tsa.seasonal_decompose(data)
@@ -277,8 +280,10 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
 
         # Compute critical value.
         p = 1 - alpha / (n - i + 1) if one_tail else (1 - alpha / (2 * (n - i + 1)))
+        t = sp.stats.t.ppf(p, n - i - 1)
+        lam = t * (n - i) / np.sqrt((n - i - 1 + t ** 2) * (n - i + 1))
+        if ares.max() > lam:
+            num_anoms = i
 
-        # TODO..
-    
-    
-    
+        # R only return num_anoms number of R_idx elments, here we return ALL.  TODO... need improvement
+        R_idx = R_idx if num_anoms > 0 else None
