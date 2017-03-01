@@ -137,7 +137,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
     assert x.values.dtype in [int, float], 'Values of the series must be number'
-    assert x.index.dtype == datetime.datetime, 'Index of the series must be number or datetime'
+    assert x.index.dtype == np.dtype('datetime64[ns]'), 'Index of the series must be datetime'
     assert max_anoms <= 0.49 and max_anoms >= 0, 'max_anoms must be non-negative and less than 50% '
     assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
     assert only_last in [None, 'day', 'hr'], 'only_last options: None | day | hr'
@@ -192,20 +192,92 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
             # if there is at least 14 days left, subset it, otherwise subset last_date - 14 days
             end_date = start_date + datetime.timedelta(days=num_days_in_period)
             if end_date < data.index[-1]:
-                all_data.append(data.loc[lambda x: x.index >= start_date and x.index <= end_date])
+                all_data.append(data.loc[lambda x: (x.index >= start_date) & (x.index <= end_date)])
             else:
                 all_data.append(data.loc[lambda x: x.index >= data.index[-1] - datetime.timedelta(days=num_days_in_period)])
 
     else:
-        all_data = data
+        all_data = [data]
 
     all_anoms = pd.Series()
     seasonal_plus_trend = pd.Series()
     # Detect anomalies on all data (either entire data in one-pass, or in 2 week blocks if longterm=TRUE)
     for series in all_data:
-        pass
-        
-    raise Exception('Unfinied now!')
+        shesd = _detect_anoms(series, k=max_anoms, alpha=alpha, num_obs_per_period=period, use_decomp=True, use_esd=False, direction=direction, verbose=verbose)
+        shesd_anoms = shesd['anoms']
+        shesd_stl = shesd['stl']
+
+        # -- Step 3: Use detected anomaly timestamps to extract the actual anomalies (timestamp and value) from the data
+        anoms = pd.Series() if shesd_anoms.empty else series.loc[shesd_anoms.index]
+
+        # Filter the anomalies using one of the thresholding functions if applicable
+        if threshold:
+            # Calculate daily max values
+            periodic_max = data.resample('1D').max()
+            if threshold == 'med_max':
+                thresh = periodic_max.median()
+            elif threshold == 'p95':
+                thresh = periodic_max.quantile(0.95)
+            elif threshold == 'p99':
+                thresh = periodic_max.quantile(0.99)
+            else:
+                raise AttributeError('Invalid threshold, threshold options: None | med_max | p95 | p99')
+
+            anoms = anoms.loc[anoms.values >= thresh]
+
+        all_anoms = all_anoms.append(anoms)
+        seasonal_plus_trend = seasonal_plus_trend.append(shesd_stl)
+
+    all_anoms.drop_duplicates(inplace=True)
+    seasonal_plus_trend.drop_duplicates(inplace=True)
+
+    # -- If only_last was set by the user, create subset of the data that represent the most recent day
+    if only_last:
+        start_date = data.index[-1] - datetime.timedelta(days=7)
+        start_anoms = data.index[-1] - datetime.timedelta(days=1)
+
+        if granularity == 'day':
+            #TODO: This might be better set up top at the gran check
+            breaks = 3 * 12
+            num_days_per_line = 7
+        elif only_last == 'day':
+            breaks = 12
+        else:
+            # We need to change start_date and start_anoms for the hourly only_last option
+            start_date = datetime.datetime.combine((data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
+            start_anoms = data.index[-1] - datetime.timedelta(hours=1)
+            breaks = 3
+
+        # subset the last days worth of data
+        x_subset_single_day = data.loc[data.index > start_anoms]
+        # When plotting anoms for the last day only we only show the previous weeks data
+        x_subset_week = data.loc[lambda df: (df.index <= start_anoms) & (df.index > start_date)]
+        all_anoms = all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
+
+    # Calculate number of anomalies as a percentage
+    anom_pct = all_anoms.size / x_subset_single_day.size * 100
+
+    # If there are no anoms, then let's exit
+    if not anom_pct:
+        if verbose:
+            print('No anomalies detected.')
+
+        return {
+            'anoms': pd.Series(),
+            'plot': None
+        }
+
+    if plot:
+        num_days_per_line
+        breaks
+        x_subset_week
+        raise Exception('TODO: Unsupported now')
+
+    return {
+        'anoms': all_anoms,
+        'expected': seasonal_plus_trend if e_value else None,
+        'plot': 'TODO' if plot else None
+    }
 
 # Detects anomalies in a time series using S-H-ESD.
 #
@@ -227,10 +299,10 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
 
     # validation
-    assert not num_obs_per_period, "must supply period length for time series decomposition"
+    assert num_obs_per_period, "must supply period length for time series decomposition"
     assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
     assert data.size >= num_obs_per_period * 2, 'Anomaly detection needs at least 2 periods worth of data'
-    assert not data[data.isnull()], 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
+    assert data[data.isnull()].empty, 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
     # conversion
     if direction == 'pos':
@@ -244,14 +316,14 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
 
     # -- Step 1: Decompose data. This returns a univarite remainder which will be used for anomaly detection. Optionally, we might NOT decompose.
     # Note: R use stl, but here we will use MA, the result may be different TODO.. Here need improvement
-    decomposed = sm.tsa.seasonal_decompose(data)
-    data = data - decomposed.seasonal - np.median(data)
-    smoothed = decomposed.seasonal + decomposed.trend
+    decomposed = sm.tsa.seasonal_decompose(data, freq=num_obs_per_period)
+    data = data - decomposed.seasonal.fillna(0) - np.median(data)
+    smoothed = decomposed.seasonal.fillna(0) + decomposed.trend.fillna(0)
 
-    max_outliers = np.trunc(data.size * k)
-    assert not max_outliers, 'With longterm=TRUE, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
+    max_outliers = int(np.trunc(data.size * k))
+    assert max_outliers, 'With longterm=TRUE, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
 
-    R_idx = list(range(1, max_outliers))
+    R_idx = pd.Series()
     num_anoms = 0
 
     # Compute test statistic until r=max_outliers values have been
@@ -261,7 +333,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         if verbose:
             print(i, '/', max_outliers, ' completed')
 
-        if not data.mad:
+        if not data.mad():
             break
 
         if not one_tail:
@@ -274,7 +346,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         ares = ares / data.mad()
 
         tmp_anom_index = ares[ares.values == ares.max()].index
-        R_idx[tmp_anom_index] = data.loc[tmp_anom_index]
+        R_idx = R_idx.append(pd.Series(data.loc[tmp_anom_index], index=tmp_anom_index))
 
         data.drop(tmp_anom_index, inplace=True)
 
@@ -285,5 +357,10 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         if ares.max() > lam:
             num_anoms = i
 
-        # R only return num_anoms number of R_idx elments, here we return ALL.  TODO... need improvement
-        R_idx = R_idx if num_anoms > 0 else None
+    # R only return num_anoms number of R_idx elments, here we return ALL.  TODO... need improvement
+    R_idx = R_idx if num_anoms > 0 else None
+
+    return {
+        'anoms': R_idx,
+        'stl': smoothed
+    }
