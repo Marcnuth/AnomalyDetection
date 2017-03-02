@@ -316,20 +316,19 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
 
     # -- Step 1: Decompose data. This returns a univarite remainder which will be used for anomaly detection. Optionally, we might NOT decompose.
     # Note: R use stl, but here we will use MA, the result may be different TODO.. Here need improvement
-    decomposed = sm.tsa.seasonal_decompose(data, freq=num_obs_per_period)
-    data = data - decomposed.seasonal.fillna(0) - np.median(data)
-    smoothed = decomposed.seasonal.fillna(0) + decomposed.trend.fillna(0)
+    decomposed = sm.tsa.seasonal_decompose(data, freq=num_obs_per_period, two_sided=False)
+    smoothed = data - decomposed.resid.fillna(0)
+    data = data - decomposed.seasonal - data.mean()
 
     max_outliers = int(np.trunc(data.size * k))
     assert max_outliers, 'With longterm=TRUE, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
 
     R_idx = pd.Series()
-    num_anoms = 0
 
     # Compute test statistic until r=max_outliers values have been
     # removed from the sample.
 
-    for i in range(max_outliers):
+    for i in range(1, max_outliers + 1):
         if verbose:
             print(i, '/', max_outliers, ' completed')
 
@@ -346,7 +345,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         ares = ares / data.mad()
 
         tmp_anom_index = ares[ares.values == ares.max()].index
-        R_idx = R_idx.append(pd.Series(data.loc[tmp_anom_index], index=tmp_anom_index))
+        cand = pd.Series(data.loc[tmp_anom_index], index=tmp_anom_index)
 
         data.drop(tmp_anom_index, inplace=True)
 
@@ -355,10 +354,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         t = sp.stats.t.ppf(p, n - i - 1)
         lam = t * (n - i) / np.sqrt((n - i - 1 + t ** 2) * (n - i + 1))
         if ares.max() > lam:
-            num_anoms = i
-
-    # R only return num_anoms number of R_idx elments, here we return ALL.  TODO... need improvement
-    R_idx = R_idx if num_anoms > 0 else None
+            R_idx = R_idx.append(cand)
 
     return {
         'anoms': R_idx,

@@ -6,7 +6,7 @@ from anomaly_detection import anomaly_detect_ts as detts
 
 import pandas as pd
 #import seaborn as sns
-#import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt
 
 data = pd.read_csv('test_data.csv', index_col='timestamp',
                    parse_dates=True, squeeze=True,
@@ -15,9 +15,14 @@ data = pd.read_csv('test_data.csv', index_col='timestamp',
 #sns.tsplot(data)
 #plt.show()
 
-results = detts(data, max_anoms=0.02, direction='both', only_last='day', plot=False)
-prin
+#results = detts.anomaly_detect_ts(data, max_anoms=0.02, direction='both', only_last='day', plot=False)
+
+
 #assert results['anoms'].size == 25
+
+
+shesd = detts._detect_anoms(data, k=0.02, alpha=0.05, num_obs_per_period=1440, use_decomp=True, use_esd=False, direction='both', verbose=False)
+
 
 
 
