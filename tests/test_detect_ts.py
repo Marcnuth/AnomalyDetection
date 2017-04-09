@@ -3,25 +3,47 @@ sys.path.append("..")
 sys.path.append("../anomaly_detection/")
 from anomaly_detection import anomaly_detect_ts as detts
 
-
 import pandas as pd
 #import seaborn as sns
 import matplotlib.pyplot as plt
 
-data = pd.read_csv('test_data.csv', index_col='timestamp',
-                   parse_dates=True, squeeze=True,
-                   date_parser=lambda x: pd.datetime.strptime(x, '%Y-%m-%d %H:%M:%S'))
 
-#sns.tsplot(data)
-#plt.show()
-
-#results = detts.anomaly_detect_ts(data, max_anoms=0.02, direction='both', only_last='day', plot=False)
+def dparserfunc(date):
+    return pd.datetime.strptime(date, '%Y-%m-%d %H:%M:%S')
 
 
-#assert results['anoms'].size == 25
+def test__detect_anoms(data):
+    shesd = detts._detect_anoms(data, k=0.02, alpha=0.05,
+                                num_obs_per_period=1440,
+                                use_decomp=True, use_esd=False,
+                                direction='both', verbose=False)
+
+    
+
+def test_anomaly_detect_ts(data):
+    results = detts.anomaly_detect_ts(data, max_anoms=0.02,
+                                      direction='both',
+                                      only_last='day', plot=False)
 
 
-shesd = detts._detect_anoms(data, k=0.02, alpha=0.05, num_obs_per_period=1440, use_decomp=True, use_esd=False, direction='both', verbose=False)
+if __name__ == '__main__':
+    data = pd.read_csv('test_data.csv', index_col='timestamp',
+                       parse_dates=True, squeeze=True,
+                       date_parser=dparserfunc)
+
+    test_anomaly_detect_ts(data)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
