@@ -1,3 +1,10 @@
+import numpy as np
+import scipy as sp
+import pandas as pd
+import datetime
+import statsmodels.api as sm
+import anomaly_detect_ts
+
 '''
 Description:
 
@@ -126,8 +133,45 @@ Examples:
 
 
 '''
+
+
+def __verbose_if(condition, *args, **kwargs):
+    if condition:
+        print(*args, **kwargs)
+
+
 def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,
-                       period=None, only_last=False, threshold="None", e_value=False,
+                       period=None, only_last=False, threshold=None, e_value=False,
                        longterm_period=None, plot=False, y_log=False, xlabel="",
-                       ylabel="count", title=None, verbose=False):
-    raise Exception('Unsupported now!')
+                       ylabel="count", title="", verbose=False):
+
+    assert isinstance(x) == pd.Series, 'x must be pandas series'
+    assert max_anoms < 0.5, 'max_anoms must be < 0.5'
+    assert direction in ['pos', 'neg', 'both'], 'direction should be one of "pos", "neg", "both"'
+    assert period, "Period must be set to the number of data points in a single period"
+
+    __verbose_if((alpha < 0.01 or alpha > 0.1) and verbose,
+                 "Warning: alpha is the statistical signifigance, and is usually between 0.01 and 0.1")
+
+    max_anoms = 1.0 / x.size if max_anoms < 1.0 / x.size else max_anoms
+
+    step = int(np.ceil(x.size / longterm_period)) if longterm_period else x.size
+    all_data = [x.iloc[i:i + step] for i in range(0, x.size, step)]
+
+    one_tail = True if direction in ['pos', 'neg'] else False
+    upper_tail = True if direction in ['pos', 'both'] else False
+
+    all_anoms = pd.Series()
+    seasonal_plus_trend = pd.Series()
+    for ts in all_data:
+        tmp = anomaly_detect_ts._detect_anoms(
+            ts, k=max_anoms, alpha=alpha, num_obs_per_period=period, use_decomp=True,
+            use_esd=False, direction=direction, verbose=verbose)
+
+        s_h_esd_timestamps = tmp['anoms']
+        data_decomp = tmp['stl']
+
+        anoms = ts.loc[s_h_esd_timestamps]
+        if threshold:
+            if longterm_period:
+                periodic_maxs = [ts.iloc[i: i + period],max() for i in range(0, longterm_period - 1, period)]

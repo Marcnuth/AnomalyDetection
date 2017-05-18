@@ -305,12 +305,8 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     assert data[data.isnull()].empty, 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
     # conversion
-    if direction == 'pos':
-        one_tail, upper_tail = True, True
-    elif direction == 'neg':
-        one_tail, upper_tail = True, False
-    else:
-        one_tail, upper_tail = False, True
+    one_tail = True if direction in ['pos', 'neg'] else False
+    upper_tail = True if direction in ['pos', 'both'] else False
 
     n = data.size
 
