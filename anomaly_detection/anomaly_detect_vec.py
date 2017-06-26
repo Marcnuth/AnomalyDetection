@@ -173,5 +173,21 @@ def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,
 
         anoms = ts.loc[s_h_esd_timestamps]
         if threshold:
-            if longterm_period:
-                periodic_maxs = [ts.iloc[i: i + period],max() for i in range(0, longterm_period - 1, period)]
+            end = longterm_period - 1 if longterm_period else x.size - 1
+            periodic_maxs = [ts.iloc[i: i + period].max()
+                             for i in range(0, end, period)]
+
+            if threshold == "med_max":
+                thresh = periodic_maxs.median()
+            elif threshold == "p95":
+                thresh = periodic_maxs.quantile(0.95)
+            elif threshold == "p99":
+                thresh = periodic_maxs.quantile(0.99)
+
+            anoms = anoms[anoms >= thresh]
+            all_anoms.append(anoms)
+            seasonal_plus_trend.append(data_decomp)
+
+    all_anoms.drop_duplicates(inplace=True)
+    seasonal_plus_trend.drop_duplicates(inplace=True)
+    
