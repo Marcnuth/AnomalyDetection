@@ -3,7 +3,7 @@ import scipy as sp
 import pandas as pd
 import datetime
 import statsmodels.api as sm
-import anomaly_detect_ts
+import anomaly_detection.anomaly_detect_ts
 
 '''
 Description:
