@@ -30,7 +30,7 @@ only_last: Find and report anomalies only within the last day or hr in
           the time series. None | "day" | "hr".
 
 threshold: Only report positive going anoms above the threshold
-          specified. Options are: "None" | "med_max" | "p95" |
+          specified. Options are: None | "med_max" | "p95" |
           "p99".
 
  e_value: Add an additional column to the anoms output containing the
