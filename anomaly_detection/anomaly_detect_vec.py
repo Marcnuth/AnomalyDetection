@@ -3,7 +3,7 @@ import scipy as sp
 import pandas as pd
 import datetime
 import statsmodels.api as sm
-import anomaly_detect_ts
+import anomaly_detection.anomaly_detect_ts
 
 '''
 Description:
@@ -27,7 +27,7 @@ max_anoms: Maximum number of anomalies that S-H-ESD will detect as a
           percentage of the data.
 
 direction: Directionality of the anomalies to be detected. Options are:
-          ‘'pos' | 'neg' | 'both'’.
+          "pos" | "neg" | "both".
 
    alpha: The level of statistical significance with which to accept or
           reject anomalies.
@@ -38,9 +38,9 @@ direction: Directionality of the anomalies to be detected. Options are:
 only_last: Find and report anomalies only within the last period in the
           time series.
 
-threshold: Only report positive going anoms above the threshold
-          specified. Options are: ‘'None' | 'med_max' | 'p95' |
-          'p99'’.
+threshold: Only report positive going ano"s above the threshold
+          specified. Options are: None | "med_max" | "p95" |
+          "p99".
 
  e_value: Add an additional column to the anoms output containing the
           expected value.
@@ -68,10 +68,10 @@ longterm_period: Defines the number of observations for which the trend
 
 Details:
 
-     ‘longterm_period’ This option should be set when the input time
+     "longterm_period" This option should be set when the input time
      series is longer than a month. The option enables the approach
      described in Vallis, Hochenbaum, and Kejariwal (2014).
-     ‘threshold’ Filter all negative anomalies and those anomalies
+     "threshold" Filter all negative anomalies and those anomalies
      whose magnitude is smaller than one of the specified thresholds
      which include: the median of the daily max values (med_max), the
      95th percentile of the daily max values (p95), and the 99th
@@ -81,7 +81,7 @@ Value:
 
      The returned value is a list with the following components.
 
-   anoms: Data frame containing index, values, and optionally expected
+    anoms: Data frame containing index, values, and optionally expected
           values.
 
     plot: A graphical object if plotting was requested by the user. The
@@ -102,11 +102,11 @@ Value:
     plot: A graphical object if plotting was requested by the user. The
           plot contains the estimated anomalies annotated on the input
           time series.
-     One can save ‘anoms’ to a file in the following fashion:
-     ‘write.csv(<return list name>[["anoms"]], file=<filename>)’
+     One can save "anoms" to a file in the following fashion:
+     write.csv(<return list name>[["anoms"]], file=<filename>)
 
-     One can save ‘plot’ to a file in the following fashion:
-     ‘ggsave(<filename>, plot=<return list name>[["plot"]])’
+     One can save plot to a file in the following fashion:
+     ggsave(<filename>, plot=<return list name>[["plot"]])
 
 References:
 
@@ -119,14 +119,14 @@ References:
 
 See Also:
 
-     ‘AnomalyDetectionTs’
+     "AnomalyDetectionTs"
 
 Examples:
 
      data(raw_data)
-     AnomalyDetectionVec(raw_data[,2], max_anoms=0.02, period=1440, direction='both', plot=TRUE)
+     AnomalyDetectionVec(raw_data[,2], max_anoms=0.02, period=1440, direction="both", plot=TRUE)
      # To detect only the anomalies in the last period, run the following:
-     AnomalyDetectionVec(raw_data[,2], max_anoms=0.02, period=1440, direction='both',
+     AnomalyDetectionVec(raw_data[,2], max_anoms=0.02, period=1440, direction="bot",
      only_last=TRUE, plot=TRUE)
      
 
@@ -135,9 +135,10 @@ Examples:
 '''
 
 
-def __verbose_if(condition, *args, **kwargs):
+def __verbose_if(condition, args,kwargs):
     if condition:
-        print(*args, **kwargs)
+        print(args)
+        print(kwargs)
 
 
 def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,

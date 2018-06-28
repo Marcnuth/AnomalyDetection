@@ -6,4 +6,5 @@
 """
 
 __version__ = '0.0.2'
-#from anomaly_detect_ts import anomaly_detect_ts
+from anomaly_detection.anomaly_detect_ts import anomaly_detect_ts
+from anomaly_detection.anomaly_detect_vec import anomaly_detect_vec

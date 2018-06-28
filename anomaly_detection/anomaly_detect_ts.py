@@ -7,7 +7,7 @@ Description:
 
 Usage:
 
-     nomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
+     anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold="None", e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False)
 
@@ -21,17 +21,17 @@ max_anoms: Maximum number of anomalies that S-H-ESD will detect as a
           percentage of the data.
 
 direction: Directionality of the anomalies to be detected. Options are:
-          ‘'pos' | 'neg' | 'both'’.
+          "pos" | "neg" | "both".
 
    alpha: The level of statistical significance with which to accept or
           reject anomalies.
 
 only_last: Find and report anomalies only within the last day or hr in
-          the time series. ‘NULL | 'day' | 'hr'’.
+          the time series. None | "day" | "hr".
 
 threshold: Only report positive going anoms above the threshold
-          specified. Options are: ‘'None' | 'med_max' | 'p95' |
-          'p99'’.
+          specified. Options are: None | "med_max" | "p95" |
+          "p99".
 
  e_value: Add an additional column to the anoms output containing the
           expected value.
@@ -61,10 +61,26 @@ piecewise_median_period_weeks: The piecewise median time window as
 
 Details:
 
-     ‘longterm’ This option should be set when the input time series
+     "longterm" This option should be set when the input time series
      is longer than a month. The option enables the approach described
      in Vallis, Hochenbaum, and Kejariwal (2014).
-     ‘threshold’ Filter all negative anomalies and those anomalies
+     "threshold" Filter all negative anomalies and those anomalies
+     whose magnitude is smaller than one of the specified thresholds
+     which include: the median of the daily max values (med_max), the
+     95th percentile of the daily max values (p95), and the 99th
+     percentile of the daily max values (p99).
+
+Value:
+
+    The returned value is a list with the following components.
+
+    anoms: Data frame containing timestamps, values, and optionally
+          expected values.
+
+    plot: A graphical object if plotting was requested by the user. The
+          plot contains the estimated anomalies annotated on the input
+          time series.
+     "threshold" Filter all negative anomalies and those anomalies
      whose magnitude is smaller than one of the specified thresholds
      which include: the median of the daily max values (med_max), the
      95th percentile of the daily max values (p95), and the 99th
@@ -74,33 +90,17 @@ Value:
 
      The returned value is a list with the following components.
 
-   anoms: Data frame containing timestamps, values, and optionally
+     anoms: Data frame containing timestamps, values, and optionally
           expected values.
 
-    plot: A graphical object if plotting was requested by the user. The
+     plot: A graphical object if plotting was requested by the user. The
           plot contains the estimated anomalies annotated on the input
           time series.
-     ‘threshold’ Filter all negative anomalies and those anomalies
-     whose magnitude is smaller than one of the specified thresholds
-     which include: the median of the daily max values (med_max), the
-     95th percentile of the daily max values (p95), and the 99th
-     percentile of the daily max values (p99).
+     One can save "anoms" to a file in the following fashion:
+     write.csv(<return list name>[["anoms"]], file=<filename>)
 
-Value:
-
-     The returned value is a list with the following components.
-
-   anoms: Data frame containing timestamps, values, and optionally
-          expected values.
-
-    plot: A graphical object if plotting was requested by the user. The
-          plot contains the estimated anomalies annotated on the input
-          time series.
-     One can save ‘anoms’ to a file in the following fashion:
-     ‘write.csv(<return list name>[["anoms"]], file=<filename>)’
-
-     One can save ‘plot’ to a file in the following fashion:
-     ‘ggsave(<filename>, plot=<return list name>[["plot"]])’
+     One can save "plot" to a file in the following fashion:
+     ggsave(<filename>, plot=<return list name>[["plot"]])
 
 References:
 
@@ -116,10 +116,12 @@ See Also:
      anomaly_detect_vec
 
 Examples:
-
-     anomaly_detect_ts(raw_data, max_anoms=0.02, direction='both', plot=TRUE)
+     # To detect all anomalies
+     anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", plot=True)
      # To detect only the anomalies on the last day, run the following:
-     anomaly_detect_ts(raw_data, max_anoms=0.02, direction='both', only_last="day", plot=TRUE)
+     anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="day", plot=True)
+     # To detect only the anomalies on the last hr, run the following:
+     anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="hr", plot=True)
 
 '''
 
@@ -128,7 +130,6 @@ import scipy as sp
 import pandas as pd
 import datetime
 import statsmodels.api as sm
-
 
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
@@ -254,11 +255,8 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         x_subset_week = data.loc[lambda df: (df.index <= start_anoms) & (df.index > start_date)]
         all_anoms = all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
 
-    # Calculate number of anomalies as a percentage
-    anom_pct = all_anoms.size / x_subset_single_day.size * 100
-
     # If there are no anoms, then let's exit
-    if not anom_pct:
+    if all_anoms.empty:
         if verbose:
             print('No anomalies detected.')
 
