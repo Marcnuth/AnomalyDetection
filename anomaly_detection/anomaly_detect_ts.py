@@ -61,6 +61,8 @@ piecewise_median_period_weeks: The piecewise median time window as
  
  resampling: whether ms or sec granularity should be resampled to min granularity. 
              Defaults to False.
+             
+ period_override: Override the auto-generated period
 
 Details:
 
@@ -121,10 +123,14 @@ See Also:
 Examples:
      # To detect all anomalies
      anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", plot=True)
-     # To detect only the anomalies on the last day, run the following:
+     # To detect only the anomalies in the last day, run the following:
      anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="day", plot=True)
-     # To detect only the anomalies on the last hr, run the following:
+     # To detect only the anomalies in the last hr, run the following:
      anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="hr", plot=True)
+     # To detect only the anomalies in the last hr and resample data of ms or sec granularity:
+     anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="hr", plot=True, resampling=True)
+     # To detect anomalies in the last day specifying a period of 1440
+     anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="hr", period_override=1440)
 
 '''
 
@@ -137,13 +143,16 @@ import statsmodels.api as sm
 def handle_granularity_error(level):
     raise ValueError('%s granularity is not supported. Ensure granularity => minute or enable resampling' % level)
 
-def resample_to_min(data):    
+def resample_to_min(data, period_override=None):    
     data = data.resample('60s', label='right').sum()
-    period = 1440
+    if override_period(period_override):
+        period = period_override
+    else:
+        period = 1440
     return (data, period)
 
-def override_period(period_arg):
-        return period_arg is not None
+def override_period(period_override):
+        return period_override is not None
 
 def get_period(gran_period, period_arg=None):
     if override_period(period_arg):
@@ -154,7 +163,7 @@ def get_period(gran_period, period_arg=None):
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, 
-                      dropna=False, resampling=False, period=None):
+                      dropna=False, resampling=False, period_override=None):
 
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
@@ -184,14 +193,14 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     if timediff.days > 0:
         num_days_per_line = 7
         only_last = 'day' if only_last == 'hr' else only_last
-        period = get_period(7, period)
+        period = get_period(7, period_override)
         granularity = 'day'
     elif timediff.seconds / 60 / 60 >= 1:
         granularity = 'hr'
-        period = get_period(24, period)
+        period = get_period(24, period_override)
     elif timediff.seconds / 60 >= 1:
         granularity = 'min'
-        period = get_period(1440, period)
+        period = get_period(1440, period_override)
     elif timediff.seconds > 0:
         granularity = 'sec'
         
@@ -200,7 +209,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
            resampling=True. If resampling=False, raise ValueError
         '''      
         if resampling is True:
-            data, period = resample_to_min(data)
+            data, period = resample_to_min(data, period_override)
         else:
             handle_granularity_error('sec')
     else:
@@ -209,7 +218,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
            resampling=True. If resampling=False, raise ValueError
         '''
         if resampling is True:
-            data, period = resample_to_min(data)
+            data, period = resample_to_min(data, period_override)
         else:
             handle_granularity_error('ms')
 
