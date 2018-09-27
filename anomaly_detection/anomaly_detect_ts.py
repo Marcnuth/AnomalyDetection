@@ -139,27 +139,75 @@ import scipy as sp
 import pandas as pd
 import datetime
 import statsmodels.api as sm
+import logging
+logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
 def handle_granularity_error(level):
-    raise ValueError('%s granularity is not supported. Ensure granularity => minute or enable resampling' % level)
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    raise ValueError(e_message)
 
-def resample_to_min(data, period_override=None):    
+def _resample_to_min(data, period_override=None):    
     data = data.resample('60s', label='right').sum()
-    if override_period(period_override):
+    if _override_period(period_override):
         period = period_override
     else:
         period = 1440
     return (data, period)
 
-def override_period(period_override):
+def _override_period(period_override):
         return period_override is not None
 
-def get_period(gran_period, period_arg=None):
-    if override_period(period_arg):
+def _get_period(gran_period, period_arg=None):
+    if _override_period(period_arg):
         return period_arg
     else:
         return gran_period 
-  
+
+def _get_data_tuple(data, period_override, resampling=False):    
+    timediff = _get_time_diff(data)
+    
+    if timediff.days > 0:
+        period = _get_period(7, period_override)
+        granularity = 'day'
+    elif timediff.seconds / 60 / 60 >= 1:
+        granularity = 'hr'
+        period = _get_period(24, period_override)
+    elif timediff.seconds / 60 >= 1:
+        granularity = 'min'
+        period = _get_period(1440, period_override)
+    elif timediff.seconds > 0:
+        granularity = 'sec'
+    elif timediff.seconds > 0:
+        granularity = 'sec'
+        
+        '''
+           Aggregate data to minute level of granularity if data stream granularity is sec and
+           resampling=True. If resampling=False, raise ValueError
+        '''      
+        if resampling is True:
+            period = _resample_to_min(data, period_override)
+        else:
+            handle_granularity_error('sec')
+    else:
+        '''
+           Aggregate data to minute level of granularity if data stream granularity is ms and
+           resampling=True. If resampling=False, raise ValueError
+        '''
+        if resampling is True:
+            data, period = _resample_to_min(data, period_override)
+            granularity = None
+        else:
+            handle_granularity_error('ms')
+    
+    return (data, period, granularity)      
+
+def _get_time_diff(data):
+    return data.index[1] - data.index[0]
+
+def _get_max_anoms(data, max_anoms):
+    return 1 / data.size if max_anoms < 1 / data.size else max_anoms
+    
+
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, 
@@ -188,41 +236,13 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         if alpha < 0.01 or alpha > 0.1:
             print('Warning: alpha is the statistical significance and is usually between 0.01 and 0.1')
 
-    timediff = data.index[1] - data.index[0]
-    
-    if timediff.days > 0:
+    data, period, granularity = _get_data_tuple(data, period_override, resampling)
+       
+    if granularity is 'day':
         num_days_per_line = 7
         only_last = 'day' if only_last == 'hr' else only_last
-        period = get_period(7, period_override)
-        granularity = 'day'
-    elif timediff.seconds / 60 / 60 >= 1:
-        granularity = 'hr'
-        period = get_period(24, period_override)
-    elif timediff.seconds / 60 >= 1:
-        granularity = 'min'
-        period = get_period(1440, period_override)
-    elif timediff.seconds > 0:
-        granularity = 'sec'
-        
-        '''
-           Aggregate data to minute level of granularity if data stream granularity is sec and
-           resampling=True. If resampling=False, raise ValueError
-        '''      
-        if resampling is True:
-            data, period = resample_to_min(data, period_override)
-        else:
-            handle_granularity_error('sec')
-    else:
-        '''
-           Aggregate data to minute level of granularity if data stream granularity is ms and
-           resampling=True. If resampling=False, raise ValueError
-        '''
-        if resampling is True:
-            data, period = resample_to_min(data, period_override)
-        else:
-            handle_granularity_error('ms')
 
-    max_anoms = 1 / data.size if max_anoms < 1 / data.size else max_anoms
+    max_anoms = _get_max_anoms(data, max_anoms)
     
     # If longterm is enabled, break the data into subset data frames and store in all_data
     if longterm:
