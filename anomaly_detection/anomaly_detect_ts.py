@@ -142,7 +142,7 @@ import statsmodels.api as sm
 import logging
 logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
-def handle_granularity_error(level):
+def _handle_granularity_error(level):
     e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
     raise ValueError(e_message)
 
@@ -163,7 +163,8 @@ def _get_period(gran_period, period_arg=None):
     else:
         return gran_period 
 
-def _get_data_tuple(data, period_override, resampling=False):    
+def _get_data_tuple(raw_data, period_override, resampling=False):    
+    data = raw_data.sort_index()
     timediff = _get_time_diff(data)
     
     if timediff.days > 0:
@@ -187,7 +188,7 @@ def _get_data_tuple(data, period_override, resampling=False):
         if resampling is True:
             period = _resample_to_min(data, period_override)
         else:
-            handle_granularity_error('sec')
+            _handle_granularity_error('sec')
     else:
         '''
            Aggregate data to minute level of granularity if data stream granularity is ms and
@@ -197,7 +198,7 @@ def _get_data_tuple(data, period_override, resampling=False):
             data, period = _resample_to_min(data, period_override)
             granularity = None
         else:
-            handle_granularity_error('ms')
+            _handle_granularity_error('ms')
     
     return (data, period, granularity)      
 
@@ -205,14 +206,59 @@ def _get_time_diff(data):
     return data.index[1] - data.index[0]
 
 def _get_max_anoms(data, max_anoms):
+    if max_anoms == 0:
+        logging.warn('0 max_anoms results in max_outliers being 0.')
     return 1 / data.size if max_anoms < 1 / data.size else max_anoms
     
+def _process_long_term_data(data, period, granularity, piecewise_median_period_weeks):
+    # Pre-allocate list with size equal to the number of piecewise_median_period_weeks chunks in x + any left over chunk
+    # handle edge cases for daily and single column data period lengths
+    num_obs_in_period = period * piecewise_median_period_weeks + 1 if granularity == 'day' else period * 7 * piecewise_median_period_weeks
+    num_days_in_period = (7 * piecewise_median_period_weeks) + 1 if granularity == 'day' else (7 * piecewise_median_period_weeks)
+
+    all_data = []
+    # Subset x into piecewise_median_period_weeks chunks
+    for i in range(1, data.size + 1, num_obs_in_period):
+        start_date = data.index[i]
+        # if there is at least 14 days left, subset it, otherwise subset last_date - 14 days
+        end_date = start_date + datetime.timedelta(days=num_days_in_period)
+        if end_date < data.index[-1]:
+            all_data.append(data.loc[lambda x: (x.index >= start_date) & (x.index <= end_date)])
+        else:
+            all_data.append(data.loc[lambda x: x.index >= data.index[-1] - datetime.timedelta(days=num_days_in_period)])
+    return all_data    
+
+def _get_only_last_results(data, all_anoms, granularity, only_last):
+    start_date = data.index[-1] - datetime.timedelta(days=7)
+    start_anoms = data.index[-1] - datetime.timedelta(days=1)
+
+    if only_last == 'hour':
+        # We need to change start_date and start_anoms for the hourly only_last option
+        start_date = datetime.datetime.combine((data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
+        start_anoms = data.index[-1] - datetime.timedelta(hours=1)
+
+    # subset the last days worth of data
+    x_subset_single_day = data.loc[data.index > start_anoms]
+    # When plotting anoms for the last day only we only show the previous weeks data
+    x_subset_week = data.loc[lambda df: (df.index <= start_anoms) & (df.index > start_date)]
+    return all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
+
+def _get_plot_breaks(granularity, only_last):
+    if granularity == 'day':
+        breaks = 3 * 12
+    elif only_last == 'day':
+        breaks = 12
+    else:
+        breaks = 3
+    return breaks
 
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, 
                       dropna=False, resampling=False, period_override=None):
 
+    if verbose:
+        logging.info("Validating input parameters")
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
     assert x.values.dtype in [int, float], 'Values of the series must be number'
@@ -221,22 +267,20 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
     assert only_last in [None, 'day', 'hr'], 'only_last options: None | day | hr'
     assert threshold in [None, 'med_max', 'p95', 'p99'], 'threshold options: None | med_max | p95 | p99'
-    assert piecewise_median_period_weeks >= 2, 'piecewise_median_period_weeks must be greater than 2 weeks'
+    assert piecewise_median_period_weeks >= 2, 'piecewise_median_period_weeks must be greater than 2 weeks'  
+    if verbose:
+        logging.info('Completed validation of input parameters')
+        
+    if alpha < 0.01 or alpha > 0.1:
+        logging.warn('alpha is the statistical significance and is usually between 0.01 and 0.1')
 
     # conversion
     title = '' if title is None else (title + ' : ')
-    data = x.sort_index()
+    
     # TODO...
     # Allow x.index to be number, here we can convert it to datetime
 
-    # verbose
-    if verbose:
-        if max_anoms == 0:
-            print('0 max_anoms results in max_outliers being 0.')
-        if alpha < 0.01 or alpha > 0.1:
-            print('Warning: alpha is the statistical significance and is usually between 0.01 and 0.1')
-
-    data, period, granularity = _get_data_tuple(data, period_override, resampling)
+    data, period, granularity = _get_data_tuple(x, period_override, resampling)
        
     if granularity is 'day':
         num_days_per_line = 7
@@ -246,22 +290,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     
     # If longterm is enabled, break the data into subset data frames and store in all_data
     if longterm:
-        # Pre-allocate list with size equal to the number of piecewise_median_period_weeks chunks in x + any left over chunk
-        # handle edge cases for daily and single column data period lengths
-        num_obs_in_period = period * piecewise_median_period_weeks + 1 if granularity == 'day' else period * 7 * piecewise_median_period_weeks
-        num_days_in_period = (7 * piecewise_median_period_weeks) + 1 if granularity == 'day' else (7 * piecewise_median_period_weeks)
-
-        all_data = []
-        # Subset x into piecewise_median_period_weeks chunks
-        for i in range(1, data.size + 1, num_obs_in_period):
-            start_date = data.index[i]
-            # if there is at least 14 days left, subset it, otherwise subset last_date - 14 days
-            end_date = start_date + datetime.timedelta(days=num_days_in_period)
-            if end_date < data.index[-1]:
-                all_data.append(data.loc[lambda x: (x.index >= start_date) & (x.index <= end_date)])
-            else:
-                all_data.append(data.loc[lambda x: x.index >= data.index[-1] - datetime.timedelta(days=num_days_in_period)])
-
+        all_data = _process_long_term_data(data, period, granularity, piecewise_median_period_weeks)
     else:
         all_data = [data]
 
@@ -297,7 +326,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     all_anoms.drop_duplicates(inplace=True)
     seasonal_plus_trend.drop_duplicates(inplace=True)
 
-    # -- If only_last was set by the user, create subset of the data that represent the most recent day
+    # If only _last is specified, create a subset of the data corresponding to the most recent day
     if only_last:
         start_date = data.index[-1] - datetime.timedelta(days=7)
         start_anoms = data.index[-1] - datetime.timedelta(days=1)
@@ -323,7 +352,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     # If there are no anoms, then let's exit
     if all_anoms.empty:
         if verbose:
-            print('No anomalies detected.')
+            logging.info('No anomalies detected.')
 
         return {
             'anoms': pd.Series(),
@@ -332,7 +361,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 
     if plot:
         num_days_per_line
-        breaks
+        #breaks = _get_plot_breaks(granularity, only_last)
         x_subset_week
         raise Exception('TODO: Unsupported now')
 
@@ -380,7 +409,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     data = data - decomposed.seasonal - data.mean()
 
     max_outliers = int(np.trunc(data.size * k))
-    assert max_outliers, 'With longterm=TRUE, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
+    assert max_outliers, 'With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
 
     R_idx = pd.Series()
 
@@ -389,7 +418,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
 
     for i in range(1, max_outliers + 1):
         if verbose:
-            print(i, '/', max_outliers, ' completed')
+            logging.info(i, '/', max_outliers, ' completed')
 
         if not data.mad():
             break
