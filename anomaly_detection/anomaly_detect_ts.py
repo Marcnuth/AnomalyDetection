@@ -135,7 +135,8 @@ import datetime
 import statsmodels.api as sm
 
 def handle_granularity_error(level):
-    raise ValueError('%s granularity is not supported. Ensure granularity => minute or enable resampling' % level)
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    raise ValueError(e_message)
 
 def resample_to_min(data):    
     data = data.resample('60s', label='right').sum()
