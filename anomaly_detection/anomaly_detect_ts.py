@@ -132,7 +132,8 @@ import datetime
 import statsmodels.api as sm
 
 def handle_granularity_error(level):
-    raise ValueError('%s level of granularity is not supported, please ensure granularity => second' % level)
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    raise ValueError(e_message)
 
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
