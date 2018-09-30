@@ -232,7 +232,7 @@ def _get_only_last_results(data, all_anoms, granularity, only_last):
     start_date = data.index[-1] - datetime.timedelta(days=7)
     start_anoms = data.index[-1] - datetime.timedelta(days=1)
 
-    if only_last == 'hour':
+    if only_last == 'hr':
         # We need to change start_date and start_anoms for the hourly only_last option
         start_date = datetime.datetime.combine((data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
         start_anoms = data.index[-1] - datetime.timedelta(hours=1)
@@ -308,7 +308,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 
     all_anoms = pd.Series()
     seasonal_plus_trend = pd.Series()
-    # Detect anomalies on all data (either entire data in one-pass, or in 2 week blocks if longterm=TRUE)
+    # Detect anomalies on all data (either entire data in one-pass, or in 2 week blocks if longterm=True)
     for series in all_data:
         shesd = _detect_anoms(series, k=max_anoms, alpha=alpha, num_obs_per_period=period, use_decomp=True, use_esd=False, direction=direction, verbose=verbose)
         shesd_anoms = shesd['anoms']
@@ -321,16 +321,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         if threshold:
             # Calculate daily max values
             periodic_max = data.resample('1D').max()
-            if threshold == 'med_max':
-                thresh = periodic_max.median()
-            elif threshold == 'p95':
-                thresh = periodic_max.quantile(0.95)
-            elif threshold == 'p99':
-                thresh = periodic_max.quantile(0.99)
-            else:
-                raise AttributeError('Invalid threshold, threshold options: None | med_max | p95 | p99')
-
-            anoms = anoms.loc[anoms.values >= thresh]
+            anoms = _perform_threshold_filter(anoms, periodic_max, threshold)
 
         all_anoms = all_anoms.append(anoms)
         seasonal_plus_trend = seasonal_plus_trend.append(shesd_stl)
@@ -340,27 +331,8 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 
     # If only_last is specified, create a subset of the data corresponding to the most recent day or hour
     if only_last:
-        start_date = data.index[-1] - datetime.timedelta(days=7)
-        start_anoms = data.index[-1] - datetime.timedelta(days=1)
-
-        if granularity == 'day':
-            #TODO: This might be better set up top at the gran check
-            breaks = 3 * 12
-            num_days_per_line = 7
-        elif only_last == 'day':
-            breaks = 12
-        else:
-            # We need to change start_date and start_anoms for the hourly only_last option
-            start_date = datetime.datetime.combine((data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
-            start_anoms = data.index[-1] - datetime.timedelta(hours=1)
-            breaks = 3
-
-        # subset the last days worth of data
-        x_subset_single_day = data.loc[data.index > start_anoms]
-        # When plotting anoms for the last day only we only show the previous weeks data
-        x_subset_week = data.loc[lambda df: (df.index <= start_anoms) & (df.index > start_date)]
-        all_anoms = all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
-
+        all_anoms = _get_only_last_results(data, all_anoms, granularity, only_last)
+ 
     # If there are no anoms, then let's exit
     if all_anoms.empty:
         if verbose:
@@ -372,9 +344,10 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         }
 
     if plot:
+        #TODO additional refactoring and logic needed to support plotting
         num_days_per_line
         #breaks = _get_plot_breaks(granularity, only_last)
-        x_subset_week
+        #x_subset_week
         raise Exception('TODO: Unsupported now')
 
     return {
