@@ -252,6 +252,18 @@ def _get_plot_breaks(granularity, only_last):
         breaks = 3
     return breaks
 
+def _perform_threshold_filter(anoms, periodic_max, threshold):
+    if threshold == 'med_max':
+        thresh = periodic_max.median()
+    elif threshold == 'p95':
+        thresh = periodic_max.quantile(0.95)
+    elif threshold == 'p99':
+        thresh = periodic_max.quantile(0.99)
+    else:
+        raise AttributeError('Invalid threshold, threshold options are None | med_max | p95 | p99')
+
+    return anoms.loc[anoms.values >= thresh]
+    
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, 
@@ -326,7 +338,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     all_anoms.drop_duplicates(inplace=True)
     seasonal_plus_trend.drop_duplicates(inplace=True)
 
-    # If only _last is specified, create a subset of the data corresponding to the most recent day
+    # If only_last is specified, create a subset of the data corresponding to the most recent day or hour
     if only_last:
         start_date = data.index[-1] - datetime.timedelta(days=7)
         start_anoms = data.index[-1] - datetime.timedelta(days=1)
