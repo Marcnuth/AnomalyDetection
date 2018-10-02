@@ -3,7 +3,7 @@ sys.path.append("..")
 sys.path.append("../anomaly_detection/")
 from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts,\
     _get_data_tuple, _get_max_outliers, _get_max_anoms, _get_decomposed_data_tuple,\
-    _perform_threshold_filter, _get_plot_breaks, _get_only_last_results, _get_time_diff
+    _perform_threshold_filter, _get_plot_breaks, _get_only_last_results, _get_period
 
 import pandas as pd
 from pandas.core.series import Series
@@ -152,8 +152,7 @@ class TestAnomalyDetection(unittest.TestCase):
         self.assertEquals(14398, len(smoothed_data))
         
     def test_perform_threshold_filter(self):
-        results = anomaly_detect_ts(self.data, max_anoms=0.02,
-                                      direction='both', threshold='med_max',
+        results = anomaly_detect_ts(self.data, max_anoms=0.02, direction='both',
                                       only_last=None, plot=False)
         periodic_max = self.data.resample('1D').max()
         filtered_results = _perform_threshold_filter(results['anoms'], periodic_max, 'med_max')
@@ -166,11 +165,18 @@ class TestAnomalyDetection(unittest.TestCase):
         self.assertEquals(3, _get_plot_breaks('min', 'min'))
         
     def test_get_only_last_results(self):
-        results = anomaly_detect_ts(self.data, max_anoms=0.02,
-                                      direction='both', only_last=None, plot=False)
+        results = anomaly_detect_ts(self.data, max_anoms=0.02, direction='both', 
+                                    only_last=None, plot=False)
 
         last_day = _get_only_last_results(self.data, results['anoms'], 'min', 'day')
         last_hr = _get_only_last_results(self.data, results['anoms'], 'min', 'hr')
         self.assertEquals(23, len(last_day))
         self.assertEquals(3, len(last_hr))
+    
+    def test_get_period(self):
+        self.assertEquals(1440, _get_period(1440, None))
+        
+    def test_get_period_with_override(self):
+        self.assertEquals(720, _get_period(1440, 720))
+      
         
