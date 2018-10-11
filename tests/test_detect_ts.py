@@ -1,6 +1,7 @@
 import sys
 sys.path.append("..")
 sys.path.append("../anomaly_detection/")
+
 from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts,\
     _get_data_tuple, _get_max_outliers, _get_max_anoms, _get_decomposed_data_tuple,\
     _perform_threshold_filter, _get_plot_breaks, _get_only_last_results, _get_period
@@ -178,5 +179,3 @@ class TestAnomalyDetection(unittest.TestCase):
         
     def test_get_period_with_override(self):
         self.assertEquals(720, _get_period(1440, 720))
-      
-        
