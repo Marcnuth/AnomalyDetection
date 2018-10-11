@@ -161,7 +161,7 @@ Resamples a data set to the min level of granularity
   data : pandas DataFrame
     input Pandas DataFrame
   period_override : int 
-    indicates whether resampling should be done with overriden value instead of min (1440)
+    indicates whether resampling should be done with overridden value instead of min (1440)
     
 '''
 def _resample_to_min(data, period_override=None):    
@@ -275,7 +275,7 @@ Processes result set when longterm is set to true
   period : int
     the calculated or overridden period value
   granularity : string
-    the calculated or overriden granularity
+    the calculated or overridden granularity
   piecewise_median_period_weeks : int
     used to determine days and observations per period
 '''    
@@ -390,7 +390,6 @@ def _get_decomposed_data_tuple(data, num_obs_per_period):
     data = data - decomposed.seasonal - data.mean()    
     return (data, smoothed)
 
- 
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title='shesd output: ', verbose=False, 
@@ -497,7 +496,6 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 #	 verbose: Additionally printing for debugging.
 # Returns:
 #   A list containing the anomalies (anoms) and decomposition components (stl).
-
 
 def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
