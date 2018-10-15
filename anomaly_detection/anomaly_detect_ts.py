@@ -131,6 +131,10 @@ import pandas as pd
 import datetime
 import statsmodels.api as sm
 
+def handle_granularity_error(level):
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    raise ValueError(e_message)
+
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
                       plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, dropna=False):
@@ -156,9 +160,10 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         if max_anoms == 0:
             print('0 max_anoms results in max_outliers being 0.')
         if alpha < 0.01 or alpha > 0.1:
-            print('Warning: alpha is the statistical signifigance, and is usually between 0.01 and 0.1')
+            print('Warning: alpha is the statistical significance and is usually between 0.01 and 0.1')
 
     timediff = data.index[1] - data.index[0]
+    
     if timediff.days > 0:
         num_days_per_line = 7
         only_last = 'day' if only_last == 'hr' else only_last
@@ -172,10 +177,11 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         period = 1440
     elif timediff.seconds > 0:
         granularity = 'sec'
-        # Aggregate data to minutely if secondly
+        # Aggregate data to minute level of granularity if data stream granularity is seconds
         data = data.resample('60s', label='right').sum()
+        period = 1440
     else:
-        granularity = 'ms'
+        handle_granularity_error('ms')
 
     max_anoms = 1 / data.size if max_anoms < 1 / data.size else max_anoms
 
