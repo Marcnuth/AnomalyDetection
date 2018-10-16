@@ -58,6 +58,9 @@ piecewise_median_period_weeks: The piecewise median time window as
    title: Title for the output plot.
 
  verbose: Enable debug messages
+ 
+ resampling: whether ms or sec granularity should be resampled to min granularity. 
+             Defaults to False.
 
 Details:
 
@@ -135,9 +138,15 @@ def handle_granularity_error(level):
     e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
     raise ValueError(e_message)
 
+def resample_to_min(data):    
+    data = data.resample('60s', label='right').sum()
+    period = 1440
+    return (data, period)
+
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
-                      plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, dropna=False):
+                      plot=False, y_log=False, xlabel="", ylabel="count", title=None, verbose=False, 
+                      dropna=False, resampling=False):
 
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
@@ -177,11 +186,22 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         period = 1440
     elif timediff.seconds > 0:
         granularity = 'sec'
-        # Aggregate data to minute level of granularity if data stream granularity is seconds
-        data = data.resample('60s', label='right').sum()
-        period = 1440
+        
+        '''Aggregate data to minute level of granularity if data stream granularity is sec and
+           resampling=True. If resampling=False, raise ValueError
+        '''      
+        if resampling is True:
+            data, period = resample_to_min(data)
+        else:
+            handle_granularity_error('sec')
     else:
-        handle_granularity_error('ms')
+        '''Aggregate data to minute level of granularity if data stream granularity is ms and
+           resampling=True. If resampling=False, raise ValueError
+        '''
+        if resampling is True:
+            data, period = resample_to_min(data)
+        else:
+            handle_granularity_error('ms')
 
     max_anoms = 1 / data.size if max_anoms < 1 / data.size else max_anoms
 
