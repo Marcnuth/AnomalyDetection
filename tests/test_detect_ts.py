@@ -6,7 +6,8 @@ from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts
     _get_data_tuple, _get_max_outliers, _get_max_anoms, _get_decomposed_data_tuple,\
     _perform_threshold_filter, _get_plot_breaks, _get_only_last_results, _get_period
 
-import pandas as pd, numpy as np
+import pandas as pd
+import numpy as np
 from pandas.core.series import Series
 import unittest
 
