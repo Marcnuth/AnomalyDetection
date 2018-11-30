@@ -3,17 +3,20 @@ sys.path.append("..")
 sys.path.append("../anomaly_detection/")
 
 from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts,\
-    _get_data_tuple, _get_max_outliers, _get_max_anoms, _get_decomposed_data_tuple,\
-    _perform_threshold_filter, _get_plot_breaks, _get_only_last_results, _get_period
+    get_data_tuple, _get_max_outliers, _get_decomposed_data_tuple,\
+    _perform_threshold_filter, _get_plot_breaks, _get_only_last_results
 
 import pandas as pd
 import numpy as np
 from pathlib import Path
 from pandas.core.series import Series
 import unittest
+import logging
 
 
 TEST_DATA_DIR = Path('../resources/data')
+logging.getLogger('anomaly_detection').setLevel(logging.DEBUG)
+
 
 class TestAnomalyDetection(unittest.TestCase):
 
@@ -121,28 +124,28 @@ class TestAnomalyDetection(unittest.TestCase):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
                                 num_obs_per_period=1440,
                                 use_decomp=True, use_esd=False,
-                                direction='both', verbose=False)
+                                direction='both')
         self.assertEquals(133, len(shesd['anoms']))
         
     def test__detect_anoms_pos(self):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
                                 num_obs_per_period=1440,
                                 use_decomp=True, use_esd=False,
-                                direction='pos', verbose=False)
+                                direction='pos')
         self.assertEquals(50, len(shesd['anoms']))
 
     def test__detect_anoms_neg(self):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
                                 num_obs_per_period=1440,
                                 use_decomp=True, use_esd=False,
-                                direction='neg', verbose=False)
+                                direction='neg')
         self.assertEquals(85, len(shesd['anoms']))
 
     def test__detect_anoms_use_decomp_false(self):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
                                 num_obs_per_period=1440,
                                 use_decomp=False, use_esd=False,
-                                direction='both', verbose=False)
+                                direction='both')
         self.assertEquals(133, len(shesd['anoms']))
 
     def test__detect_anoms_no_num_obs_per_period(self):
@@ -150,13 +153,13 @@ class TestAnomalyDetection(unittest.TestCase):
             _detect_anoms(self.data1, k=0.02, alpha=0.05,
                             num_obs_per_period=None,
                             use_decomp=False, use_esd=False,
-                            direction='both', verbose=False)
+                            direction='both')
 
     def test__detect_anoms_use_esd_true(self):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
                                 num_obs_per_period=1440,
                                 use_decomp=True, use_esd=True,
-                                direction='both', verbose=False)
+                                direction='both')
         self.assertEquals(133, len(shesd['anoms']))
                   
     def test_anomaly_detect_ts_last_only_none(self):
@@ -232,7 +235,7 @@ class TestAnomalyDetection(unittest.TestCase):
                                       only_last=None, longterm=False, plot=False)
             
     def test_get_data_tuple(self):
-        d_tuple = _get_data_tuple(self.data1, 24, None)
+        d_tuple = get_data_tuple(self.data1, 24, None)
         raw_data = d_tuple[0]
         period = d_tuple[1]
         granularity = d_tuple[2]
@@ -247,10 +250,6 @@ class TestAnomalyDetection(unittest.TestCase):
         
     def test_get_max_outliers(self):
         self.assertEquals(719, _get_max_outliers(self.data1, 0.05))
-    
-    def test_get_max_anoms(self):
-        max_anoms = _get_max_anoms(self.data1, 0.1)
-        self.assertEquals(0.1, max_anoms)
         
     def test_get_decomposed_data_tuple(self):
         data, smoothed_data = _get_decomposed_data_tuple(self.data1, 1440)
@@ -280,9 +279,4 @@ class TestAnomalyDetection(unittest.TestCase):
         last_hr = _get_only_last_results(self.data1, results['anoms'], 'min', 'hr')
         self.assertEquals(23, len(last_day))
         self.assertEquals(3, len(last_hr))
-    
-    def test_get_period(self):
-        self.assertEquals(1440, _get_period(1440, None))
-        
-    def test_get_period_with_override(self):
-        self.assertEquals(720, _get_period(1440, 720))
+
