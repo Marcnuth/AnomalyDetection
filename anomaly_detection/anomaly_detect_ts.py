@@ -1,4 +1,4 @@
-'''
+"""
 Description:
 
      A technique for detecting anomalies in seasonal univariate time
@@ -133,7 +133,7 @@ Examples:
      # To detect anomalies in the last day specifying a period of 1440
      anomaly_detect_ts(raw_data, max_anoms=0.02, direction="both", only_last="hr", period_override=1440)
 
-'''
+"""
 
 import numpy as np
 import scipy as sp
@@ -141,30 +141,34 @@ import pandas as pd
 import datetime
 import statsmodels.api as sm
 import logging
-logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
 
-'''
-Raises ValueError with detailed error message if one of the two situations is true:
-  1. calculated granularity is less than minute (sec or ms)
-  2. resampling is not enabled for situations where calculated granularity < min
-  
-  level : String
-    the granularity that is below the min threshold
-'''
+
+logger = logging.getLogger(__name__)
+
+
 def _handle_granularity_error(level):
+    """
+    Raises ValueError with detailed error message if one of the two situations is true:
+      1. calculated granularity is less than minute (sec or ms)
+      2. resampling is not enabled for situations where calculated granularity < min
+
+      level : String
+        the granularity that is below the min threshold
+    """
     e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
     raise ValueError(e_message)
 
-'''
-Resamples a data set to the min level of granularity
 
-  data : pandas DataFrame
-    input Pandas DataFrame
-  period_override : int 
-    indicates whether resampling should be done with overridden value instead of min (1440)
-    
-'''
-def _resample_to_min(data, period_override=None):    
+def _resample_to_min(data, period_override=None):
+    """
+    Resamples a data set to the min level of granularity
+
+      data : pandas DataFrame
+        input Pandas DataFrame
+      period_override : int
+        indicates whether resampling should be done with overridden value instead of min (1440)
+
+    """
     data = data.resample('60s', label='right').sum()
     if _override_period(period_override):
         period = period_override
@@ -172,40 +176,43 @@ def _resample_to_min(data, period_override=None):
         period = 1440
     return (data, period)
 
-'''
-Indicates whether period can be overridden if the period derived from granularity does
-not match the generated period.
 
-  period_override : int
-    the user-specified period that overrides the value calculated from granularity
-'''
 def _override_period(period_override):
-        return period_override is not None
+    """
+    Indicates whether period can be overridden if the period derived from granularity does
+    not match the generated period.
 
-'''
-Returns the generated period or overridden period depending upon the period_arg
-  gran_period : int
-    the period generated from the granularity
-  period_arg : the period override value that is either None or an int
-    the period to override the period generated from granularity
-'''
+      period_override : int
+        the user-specified period that overrides the value calculated from granularity
+    """
+    return period_override is not None
+
+
 def _get_period(gran_period, period_arg=None):
+    """
+    Returns the generated period or overridden period depending upon the period_arg
+      gran_period : int
+        the period generated from the granularity
+      period_arg : the period override value that is either None or an int
+        the period to override the period generated from granularity
+    """
     if _override_period(period_arg):
         return period_arg
     else:
         return gran_period 
 
-'''
-Generates a tuple consisting of processed input data, a calculated or overridden period, and granularity
 
-  raw_data : pandas DataFrame
-    input data
-  period_override : int
-    period specified in the anomaly_detect_ts parameter list, None if it is not provided
-  resampling : True | False
-    indicates whether the raw_data should be resampled to a supporting granularity, if applicable
-'''
-def _get_data_tuple(raw_data, period_override, resampling=False):    
+def _get_data_tuple(raw_data, period_override, resampling=False):
+    """
+    Generates a tuple consisting of processed input data, a calculated or overridden period, and granularity
+
+      raw_data : pandas DataFrame
+        input data
+      period_override : int
+        period specified in the anomaly_detect_ts parameter list, None if it is not provided
+      resampling : True | False
+        indicates whether the raw_data should be resampled to a supporting granularity, if applicable
+    """
     data = raw_data.sort_index()
     timediff = _get_time_diff(data)
     
@@ -244,42 +251,45 @@ def _get_data_tuple(raw_data, period_override, resampling=False):
     
     return (data, period, granularity)      
 
-'''
-Generates the time difference used to determine granularity and 
-to generate the period
 
-  data : pandas DataFrame
-    composed of input data
-'''
 def _get_time_diff(data):
+    """
+    Generates the time difference used to determine granularity and
+    to generate the period
+
+      data : pandas DataFrame
+        composed of input data
+    """
     return data.index[1] - data.index[0]
 
-'''
-Returns the max_anoms parameter used for S-H-ESD time series anomaly detection
 
-  data : pandas DataFrame
-    composed of input data 
-  max_anoms : float
-    the input max_anoms
-'''
 def _get_max_anoms(data, max_anoms):
+    """
+    Returns the max_anoms parameter used for S-H-ESD time series anomaly detection
+
+      data : pandas DataFrame
+        composed of input data
+      max_anoms : float
+        the input max_anoms
+    """
     if max_anoms == 0:
-        logging.warn('0 max_anoms results in max_outliers being 0.')
+        logger.warning('0 max_anoms results in max_outliers being 0.')
     return 1 / data.size if max_anoms < 1 / data.size else max_anoms
 
-'''
-Processes result set when longterm is set to true
 
-  data : list of floats
-    the result set of anoms
-  period : int
-    the calculated or overridden period value
-  granularity : string
-    the calculated or overridden granularity
-  piecewise_median_period_weeks : int
-    used to determine days and observations per period
-'''    
 def _process_long_term_data(data, period, granularity, piecewise_median_period_weeks):
+    """
+    Processes result set when longterm is set to true
+
+      data : list of floats
+        the result set of anoms
+      period : int
+        the calculated or overridden period value
+      granularity : string
+        the calculated or overridden granularity
+      piecewise_median_period_weeks : int
+        used to determine days and observations per period
+    """
     # Pre-allocate list with size equal to the number of piecewise_median_period_weeks chunks in x + any left over chunk
     # handle edge cases for daily and single column data period lengths
     num_obs_in_period = period * piecewise_median_period_weeks + 1 if granularity == 'day' else period * 7 * piecewise_median_period_weeks
@@ -297,19 +307,20 @@ def _process_long_term_data(data, period, granularity, piecewise_median_period_w
             all_data.append(data.loc[lambda x: x.index >= data.index[-1] - datetime.timedelta(days=num_days_in_period)])
     return all_data    
 
-'''
-Returns the results from the last day or hour only
 
-  data : pandas DataFrame
-    input data set
-  all_anoms : list of floats
-    all of the anomalies returned by the algorithm
-  granularity : string day | hr | min
-    The supported granularity value
-  only_last : string day | hr
-    The subset of anomalies to be returned
-'''
 def _get_only_last_results(data, all_anoms, granularity, only_last):
+    """
+    Returns the results from the last day or hour only
+
+      data : pandas DataFrame
+        input data set
+      all_anoms : list of floats
+        all of the anomalies returned by the algorithm
+      granularity : string day | hr | min
+        The supported granularity value
+      only_last : string day | hr
+        The subset of anomalies to be returned
+    """
     start_date = data.index[-1] - datetime.timedelta(days=7)
     start_anoms = data.index[-1] - datetime.timedelta(days=1)
 
@@ -324,15 +335,16 @@ def _get_only_last_results(data, all_anoms, granularity, only_last):
     x_subset_week = data.loc[lambda df: (df.index <= start_anoms) & (df.index > start_date)]
     return all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
 
-'''
-Generates the breaks used in plotting
 
-  granularity : string
-    the supported granularity value
-  only_last : True | False
-    indicates whether only the last day or hour is returned and to be plotted
-'''
 def _get_plot_breaks(granularity, only_last):
+    """
+    Generates the breaks used in plotting
+
+      granularity : string
+        the supported granularity value
+      only_last : True | False
+        indicates whether only the last day or hour is returned and to be plotted
+    """
     if granularity == 'day':
         breaks = 3 * 12
     elif only_last == 'day':
@@ -341,17 +353,18 @@ def _get_plot_breaks(granularity, only_last):
         breaks = 3
     return breaks
 
-'''
-Filters the list of anomalies per the threshold filter
 
-  anoms : list of floats
-    the anoms returned by the algorithm
-  periodic_max : float
-    calculated daily max value
-  threshold : med_max" | "p95" | "p99"
-    user-specified threshold value used to filter anoms
-'''
 def _perform_threshold_filter(anoms, periodic_max, threshold):
+    """
+    Filters the list of anomalies per the threshold filter
+
+      anoms : list of floats
+        the anoms returned by the algorithm
+      periodic_max : float
+        calculated daily max value
+      threshold : med_max" | "p95" | "p99"
+        user-specified threshold value used to filter anoms
+    """
     if threshold == 'med_max':
         thresh = periodic_max.median()
     elif threshold == 'p95':
@@ -363,32 +376,35 @@ def _perform_threshold_filter(anoms, periodic_max, threshold):
 
     return anoms.loc[anoms.values >= thresh]
 
-'''
-Calculates the max_outliers for an input data set
 
-  data : pandas DataFrame
-    the input data set
-  max_percent_anomalies : float
-    the input maximum number of anomalies per percent of data set values
-'''
 def _get_max_outliers(data, max_percent_anomalies):
+    """
+    Calculates the max_outliers for an input data set
+
+      data : pandas DataFrame
+        the input data set
+      max_percent_anomalies : float
+        the input maximum number of anomalies per percent of data set values
+    """
     max_outliers = int(np.trunc(data.size * max_percent_anomalies))
     assert max_outliers, 'With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(data.size)
     return max_outliers
 
-'''
-Returns a tuple consisting of two versions of the input data set: seasonally-decomposed and smoothed
 
-  data : pandas DataFrame
-    the input data set
-  num_obs_per_period : int
-    the number of observations in each period
-'''
 def _get_decomposed_data_tuple(data, num_obs_per_period):
+    """
+    Returns a tuple consisting of two versions of the input data set: seasonally-decomposed and smoothed
+
+      data : pandas DataFrame
+        the input data set
+      num_obs_per_period : int
+        the number of observations in each period
+    """
     decomposed = sm.tsa.seasonal_decompose(data, freq=num_obs_per_period, two_sided=False)
     smoothed = data - decomposed.resid.fillna(0)
     data = data - decomposed.seasonal - data.mean()    
     return (data, smoothed)
+
 
 def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=None,
                       threshold=None, e_value=False, longterm=False, piecewise_median_period_weeks=2,
@@ -396,7 +412,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
                       dropna=False, resampling=False, period_override=None):
 
     if verbose:
-        logging.info("Validating input parameters")
+        logger.info("Validating input parameters")
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
     assert x.values.dtype in [int, float], 'Values of the series must be number'
@@ -407,10 +423,10 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     assert threshold in [None, 'med_max', 'p95', 'p99'], 'threshold options: None | med_max | p95 | p99'
     assert piecewise_median_period_weeks >= 2, 'piecewise_median_period_weeks must be greater than 2 weeks'  
     if verbose:
-        logging.info('Completed validation of input parameters')
+        logger.info('Completed validation of input parameters')
         
     if alpha < 0.01 or alpha > 0.1:
-        logging.warn('alpha is the statistical significance and is usually between 0.01 and 0.1')
+        logger.warning('alpha is the statistical significance and is usually between 0.01 and 0.1')
     
     # TODO Allow x.index to be number, here we can convert it to datetime
 
@@ -462,7 +478,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     # If there are no anoms, log it and return an empty anoms result
     if all_anoms.empty:
         if verbose:
-            logging.info('No anomalies detected.')
+            logger.info('No anomalies detected.')
 
         return {
             'anoms': pd.Series(),
@@ -482,23 +498,25 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         'plot': 'TODO' if plot else None
     }
 
-# Detects anomalies in a time series using S-H-ESD.
-#
-# Args:
-#	 data: Time series to perform anomaly detection on.
-#	 k: Maximum number of anomalies that S-H-ESD will detect as a percentage of the data.
-#	 alpha: The level of statistical significance with which to accept or reject anomalies.
-#	 num_obs_per_period: Defines the number of observations in a single period, and used during seasonal decomposition.
-#	 use_decomp: Use seasonal decomposition during anomaly detection.
-#	 use_esd: Uses regular ESD instead of hybrid-ESD. Note hybrid-ESD is more statistically robust.
-#	 one_tail: If TRUE only positive or negative going anomalies are detected depending on if upper_tail is TRUE or FALSE.
-#	 upper_tail: If TRUE and one_tail is also TRUE, detect only positive going (right-tailed) anomalies. If FALSE and one_tail is TRUE, only detect negative (left-tailed) anomalies.
-#	 verbose: Additionally printing for debugging.
-# Returns:
-#   A list containing the anomalies (anoms) and decomposition components (stl).
 
 def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
+    """
+    Detects anomalies in a time series using S-H-ESD.
+
+    Args:
+         data: Time series to perform anomaly detection on.
+         k: Maximum number of anomalies that S-H-ESD will detect as a percentage of the data.
+         alpha: The level of statistical significance with which to accept or reject anomalies.
+         num_obs_per_period: Defines the number of observations in a single period, and used during seasonal decomposition.
+         use_decomp: Use seasonal decomposition during anomaly detection.
+         use_esd: Uses regular ESD instead of hybrid-ESD. Note hybrid-ESD is more statistically robust.
+         one_tail: If TRUE only positive or negative going anomalies are detected depending on if upper_tail is TRUE or FALSE.
+         upper_tail: If TRUE and one_tail is also TRUE, detect only positive going (right-tailed) anomalies. If FALSE and one_tail is TRUE, only detect negative (left-tailed) anomalies.
+         verbose: Additionally printing for debugging.
+    Returns:
+       A list containing the anomalies (anoms) and decomposition components (stl).
+    """
 
     # validation
     assert num_obs_per_period, "must supply period length for time series decomposition"
@@ -527,7 +545,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     # removed from the sample.
     for i in range(1, max_outliers + 1):
         if verbose:
-            logging.info(i, '/', max_outliers, ' completed')
+            logger.info(i, '/', max_outliers, ' completed')
 
         if not data.mad():
             break

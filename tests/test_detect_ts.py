@@ -8,29 +8,33 @@ from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts
 
 import pandas as pd
 import numpy as np
+from pathlib import Path
 from pandas.core.series import Series
 import unittest
+
+
+TEST_DATA_DIR = Path('../resources/data')
 
 class TestAnomalyDetection(unittest.TestCase):
 
     def setUp(self):
-        self.data1 = pd.read_csv('test_data_1.csv', index_col='timestamp',
+        self.data1 = pd.read_csv(TEST_DATA_DIR / 'test_data_1.csv', index_col='timestamp',
                        parse_dates=True, squeeze=True,
                        date_parser=self.dparserfunc)
         
-        self.data2 = pd.read_csv('test_data_2.csv', index_col='timestamp',
+        self.data2 = pd.read_csv(TEST_DATA_DIR / 'test_data_2.csv', index_col='timestamp',
                        parse_dates=True, squeeze=True,
                        date_parser=self.dparserfunc)
         
-        self.data3 = pd.read_csv('test_data_3.csv', index_col='timestamp',
+        self.data3 = pd.read_csv(TEST_DATA_DIR / 'test_data_3.csv', index_col='timestamp',
                        parse_dates=True, squeeze=True,
                        date_parser=self.dparserfunc)
         
-        self.data4 = pd.read_csv('test_data_4.csv', index_col='timestamp',
+        self.data4 = pd.read_csv(TEST_DATA_DIR / 'test_data_4.csv', index_col='timestamp',
                        parse_dates=True, squeeze=True,
                        date_parser=self.dparserfunc)
         
-        self.data5 = pd.read_csv('test_data_5.csv', index_col='timestamp',
+        self.data5 = pd.read_csv(TEST_DATA_DIR / 'test_data_5.csv', index_col='timestamp',
                        parse_dates=True, squeeze=True,
                        date_parser=self.dparserfunc)        
 
