@@ -3,7 +3,7 @@ sys.path.append("..")
 sys.path.append("../anomaly_detection/")
 
 from anomaly_detection.anomaly_detect_ts import _detect_anoms, anomaly_detect_ts,\
-    get_data_tuple, _get_max_outliers, _get_decomposed_data_tuple,\
+    _get_data_tuple, _get_max_outliers, _get_decomposed_data_tuple,\
     _perform_threshold_filter, _get_plot_breaks, _get_only_last_results
 
 import pandas as pd
@@ -54,26 +54,26 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
 
         self.assertEquals(132, len(values))
-        self.assertTrue(np.isin(self.get_test_value(40.0), values))
-        self.assertTrue(np.isin(self.get_test_value(250.0), values))
-        self.assertTrue(np.isin(self.get_test_value(210.0), values))
-        self.assertTrue(np.isin(self.get_test_value(193.1036), values))
-        self.assertTrue(np.isin(self.get_test_value(186.82299999999998), values))
-        self.assertTrue(np.isin(self.get_test_value(181.514), values))
-        self.assertTrue(np.isin(self.get_test_value(27.6501), values))
-        self.assertTrue(np.isin(self.get_test_value(30.6972), values))
-        self.assertTrue(np.isin(self.get_test_value(39.5523), values))
-        self.assertTrue(np.isin(self.get_test_value(37.3052), values))
-        self.assertTrue(np.isin(self.get_test_value(30.8174), values))
-        self.assertTrue(np.isin(self.get_test_value(23.9362), values))
-        self.assertTrue(np.isin(self.get_test_value(27.6677), values))
-        self.assertTrue(np.isin(self.get_test_value(23.9362), values))
-        self.assertTrue(np.isin(self.get_test_value(149.541), values))
-        self.assertTrue(np.isin(self.get_test_value(52.0359), values))
-        self.assertTrue(np.isin(self.get_test_value(52.7478), values))
-        self.assertTrue(np.isin(self.get_test_value(151.549), values))
-        self.assertTrue(np.isin(self.get_test_value(147.028), values))
-        self.assertTrue(np.isin(self.get_test_value(31.2614), values))
+        self.assertTrue(self.get_test_value(40.0) in values)
+        self.assertTrue(self.get_test_value(250.0) in values)
+        self.assertTrue(self.get_test_value(210.0) in values)
+        self.assertTrue(self.get_test_value(193.1036) in values)
+        self.assertTrue(self.get_test_value(186.82299999999998) in values)
+        self.assertTrue(self.get_test_value(181.514) in values)
+        self.assertTrue(self.get_test_value(27.6501) in values)
+        self.assertTrue(self.get_test_value(30.6972) in values)
+        self.assertTrue(self.get_test_value(39.5523) in values)
+        self.assertTrue(self.get_test_value(37.3052) in values)
+        self.assertTrue(self.get_test_value(30.8174) in values)
+        self.assertTrue(self.get_test_value(23.9362) in values)
+        self.assertTrue(self.get_test_value(27.6677) in values)
+        self.assertTrue(self.get_test_value(23.9362) in values)
+        self.assertTrue(self.get_test_value(149.541) in values)
+        self.assertTrue(self.get_test_value(52.0359) in values)
+        self.assertTrue(self.get_test_value(52.7478) in values)
+        self.assertTrue(self.get_test_value(151.549) in values)
+        self.assertTrue(self.get_test_value(147.028) in values)
+        self.assertTrue(self.get_test_value(31.2614) in values)
                
     def test_anomaly_detect_ts_2(self):
         results = anomaly_detect_ts(self.data2,
@@ -82,8 +82,8 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()   
         
         self.assertEquals(2, len(values))
-        self.assertTrue(np.isin(self.get_test_value(-549.97419676451), values))
-        self.assertTrue(np.isin(self.get_test_value(-3241.79887765979), values))
+        self.assertTrue(self.get_test_value(-549.97419676451) in values)
+        self.assertTrue(self.get_test_value(-3241.79887765979) in values)
         
     def test_anomaly_detect_ts_3(self):
         results = anomaly_detect_ts(self.data3,
@@ -92,12 +92,12 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
         
         self.assertEquals(6, len(values))
-        self.assertTrue(np.isin(self.get_test_value(677.306772096232), values))
-        self.assertTrue(np.isin(self.get_test_value(3003.3770260296196), values))
-        self.assertTrue(np.isin(self.get_test_value(375.68211544563), values)) 
-        self.assertTrue(np.isin(self.get_test_value(4244.34731650009), values))
-        self.assertTrue(np.isin(self.get_test_value(2030.44357652981), values))
-        self.assertTrue(np.isin(self.get_test_value(4223.461867236129), values))
+        self.assertTrue(self.get_test_value(677.306772096232) in values)
+        self.assertTrue(self.get_test_value(3003.3770260296196) in values)
+        self.assertTrue(self.get_test_value(375.68211544563) in values) 
+        self.assertTrue(self.get_test_value(4244.34731650009) in values)
+        self.assertTrue(self.get_test_value(2030.44357652981) in values)
+        self.assertTrue(self.get_test_value(4223.461867236129) in values)
         
     def test_anomaly_detect_ts_4(self):
         results = anomaly_detect_ts(self.data4,
@@ -106,7 +106,7 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
         
         self.assertEquals(1, len(values))
-        self.assertTrue(np.isin(self.get_test_value(-1449.62440286), values))
+        self.assertTrue(self.get_test_value(-1449.62440286) in values)
  
     def test_anomaly_detect_ts_5(self):
         results = anomaly_detect_ts(self.data5,
@@ -115,10 +115,10 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
         
         self.assertEquals(4, len(values))
-        self.assertTrue(np.isin(self.get_test_value(-3355.47215640248), values))
-        self.assertTrue(np.isin(self.get_test_value(941.905602754994), values))
-        self.assertTrue(np.isin(self.get_test_value(-2428.98882200991), values)) 
-        self.assertTrue(np.isin(self.get_test_value(-1263.4494013677302), values))
+        self.assertTrue(self.get_test_value(-3355.47215640248) in values)
+        self.assertTrue(self.get_test_value(941.905602754994) in values)
+        self.assertTrue(self.get_test_value(-2428.98882200991) in values)
+        self.assertTrue(self.get_test_value(-1263.4494013677302) in values)
  
     def test_detect_anoms(self):
         shesd = _detect_anoms(self.data1, k=0.02, alpha=0.05,
@@ -182,9 +182,9 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
         
         self.assertEquals(3, len(values))
-        self.assertTrue(np.isin(self.get_test_value(40.0), values))
-        self.assertTrue(np.isin(self.get_test_value(250.0), values))
-        self.assertTrue(np.isin(self.get_test_value(210.0), values)) 
+        self.assertTrue(self.get_test_value(40.0) in values)
+        self.assertTrue(self.get_test_value(250.0) in values)
+        self.assertTrue(self.get_test_value(210.0) in values) 
         
     def test_anomaly_detect_ts_pos_only(self):
         results = anomaly_detect_ts(self.data1, max_anoms=0.02,
@@ -205,10 +205,10 @@ class TestAnomalyDetection(unittest.TestCase):
         values = results['anoms'].get_values()
 
         self.assertEquals(4, len(values))
-        self.assertTrue(np.isin(self.get_test_value(203.231), values))
-        self.assertTrue(np.isin(self.get_test_value(203.90099999999998), values))
-        self.assertTrue(np.isin(self.get_test_value(250.0), values)) 
-        self.assertTrue(np.isin(self.get_test_value(210.0), values)) 
+        self.assertTrue(self.get_test_value(203.231) in values)
+        self.assertTrue(self.get_test_value(203.90099999999998) in values)
+        self.assertTrue(self.get_test_value(250.0) in values) 
+        self.assertTrue(self.get_test_value(210.0) in values) 
 
     def test_anomaly_detect_ts_longterm(self):
         results = anomaly_detect_ts(self.data1, max_anoms=0.02,
@@ -235,7 +235,7 @@ class TestAnomalyDetection(unittest.TestCase):
                                       only_last=None, longterm=False, plot=False)
             
     def test_get_data_tuple(self):
-        d_tuple = get_data_tuple(self.data1, 24, None)
+        d_tuple = _get_data_tuple(self.data1, 24, None)
         raw_data = d_tuple[0]
         period = d_tuple[1]
         granularity = d_tuple[2]
@@ -279,4 +279,7 @@ class TestAnomalyDetection(unittest.TestCase):
         last_hr = _get_only_last_results(self.data1, results['anoms'], 'min', 'hr')
         self.assertEquals(23, len(last_day))
         self.assertEquals(3, len(last_hr))
+
+if __name__ == '__main__':
+    unittest.main()
 
