@@ -8,8 +8,8 @@ dictConfig({
     "disable_existing_loggers": False,
     "formatters": {
         "basic": {
-            "format"  : "[%(asctime)s] [%(process)d:%(thread)d] [%(levelname)s] [%(name)s] %(filename)s:%(funcName)s:%(lineno)d %(message)s",
-            "datefmt" : "%Y-%m-%d %H:%M:%S"
+            "format": "[%(asctime)s] [%(process)d:%(thread)d] [%(levelname)s] [%(name)s] %(filename)s:%(funcName)s:%(lineno)d %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S"
         }
     },
     "handlers": {
@@ -21,10 +21,10 @@ dictConfig({
         },
     },
     "loggers": {
-        "anomaly_detection" : {
-            "handlers" : ["console"],
+        "anomaly_detection": {
+            "handlers": ["console"],
             "propagate": "true",
-            "level"    : "INFO"
+            "level": "INFO"
         }
     }
 })

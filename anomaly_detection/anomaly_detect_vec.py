@@ -149,7 +149,8 @@ def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,
 
     max_anoms = 1.0 / x.size if max_anoms < 1.0 / x.size else max_anoms
 
-    step = int(np.ceil(x.size / longterm_period)) if longterm_period else x.size
+    step = int(np.ceil(x.size / longterm_period)
+               ) if longterm_period else x.size
     all_data = [x.iloc[i:i + step] for i in range(0, x.size, step)]
 
     one_tail = True if direction in ['pos', 'neg'] else False
@@ -161,9 +162,9 @@ def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,
         tmp = _detect_anoms(
             ts, k=max_anoms, alpha=alpha, num_obs_per_period=period, use_decomp=True,
             use_esd=False, direction=direction, verbose=verbose)
-         
+
         s_h_esd_timestamps = tmp['anoms'].keys()
-        
+
         data_decomp = tmp['stl']
 
         anoms = ts.loc[s_h_esd_timestamps]
@@ -185,5 +186,5 @@ def anomaly_detect_vec(x, max_anoms=0.1, direction="pos", alpha=0.05,
 
     all_anoms.drop_duplicates(inplace=True)
     seasonal_plus_trend.drop_duplicates(inplace=True)
-    
+
     return anoms
