@@ -1,5 +1,7 @@
 # Anomaly Detection for Python
 
+![PyPI - Downloads](https://img.shields.io/pypi/dm/tad?color=lightgreen)
+
 ## Introduction
 
 Twitter's Anomaly Detection is easy to use, but it's a R library. 
