@@ -1,6 +1,6 @@
 # Anomaly Detection for Python
 
-![PyPI - Downloads](https://img.shields.io/pypi/dm/tad?color=lightgreen)
+![PyPI - Downloads](https://img.shields.io/pypi/dm/tad?color=lightgreen&label=PyPI)
 
 ## Introduction
 
