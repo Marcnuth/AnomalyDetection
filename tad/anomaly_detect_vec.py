@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from anomaly_detection.anomaly_detect_ts import _detect_anoms
+from .anomaly_detect_ts import _detect_anoms
 
 '''
 Description:

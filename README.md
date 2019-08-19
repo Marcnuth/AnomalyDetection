@@ -15,3 +15,8 @@ This repo aims for rewriting twitter's Anomaly Detection algorithms in Python, a
 pip3 install tad
 ```
 
+## Usage
+
+```
+import tad
+```
