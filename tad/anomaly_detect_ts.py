@@ -141,7 +141,7 @@ import pandas as pd
 import datetime
 import statsmodels.api as sm
 import logging
-
+import matplotlib.pyplot as plt #this will be used for plotting.
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,11 @@ def _handle_granularity_error(level):
       level : String
         the granularity that is below the min threshold
     """
-    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    
+    #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines 
+    #will cause issues with the module. Ideally, user should only supply single KPI for a single dimension with timestamp.
+    
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling. Please check if you are using multiple dimensions with same timestamps in the data which cause repetition of same timestamps.' % level
     raise ValueError(e_message)
 
 
@@ -426,7 +430,8 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 
     # validation
     assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
-    assert x.values.dtype in [int, float], 'Values of the series must be number'
+    #changing below as apparantly the large integer data like int64 was not captured by below
+    assert x.values.dtype in [int, float, 'int64'], 'Values of the series must be number'
     assert x.index.dtype == np.dtype('datetime64[ns]'), 'Index of the series must be datetime'
     assert max_anoms <= 0.49 and max_anoms >= 0, 'max_anoms must be non-negative and less than 50% '
     assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
@@ -488,19 +493,47 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
             'plot': None
         }
 
-    if plot:
-        # TODO additional refactoring and logic needed to support plotting
-        num_days_per_line
-        #breaks = _get_plot_breaks(granularity, only_last)
-        # x_subset_week
-        raise Exception('TODO: Unsupported now')
-
-    return {
+    ret_val = {
         'anoms': all_anoms,
         'expected': seasonal_plus_trend if e_value else None,
         'plot': 'TODO' if plot else None
     }
 
+    if plot:
+        # TODO additional refactoring and logic needed to support plotting
+        #num_days_per_line
+        #breaks = _get_plot_breaks(granularity, only_last)
+        # x_subset_week
+        
+        ret_plot = _plot_anomalies(data, ret_val)
+        ret_val['plot'] = ret_plot
+
+        
+        #raise Exception('TODO: Unsupported now')
+
+    return ret_val
+
+def _plot_anomalies(data, results):
+    """
+        Tries to plot the data and the anomalies detected in this data.
+        
+    ArgsL
+        data: Time series on which we are performing the anomaly detection. (full data)
+        results: the results dictionary which contains anomalies grouped in the key called 'anoms'
+    """
+    anoms = pd.DataFrame(results)
+    df_plot = pd.DataFrame(data).join(anoms, how='left')
+    #df_plot = df_plot.fillna(0) #if no anomaly, then we will plot a zero. can be improved.
+    df_plot['anoms'].unique()
+    plt.subplots(figsize=(14,6))
+    plt.plot(df_plot['anoms'], color='r', marker='o', 
+             label='Anomaly', linestyle="None")
+    plt.plot(data, label=data.name)
+    plt.title(data.name)
+    plt.legend(loc='best')
+    plt.grid(b=True)
+    #plt.show()
+    return plt
 
 def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
@@ -522,11 +555,26 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     """
 
     # validation
+
     assert num_obs_per_period, "must supply period length for time series decomposition"
     assert direction in ['pos', 'neg',
                          'both'], 'direction options: pos | neg | both'
-    assert data.size >= num_obs_per_period * \
-        2, 'Anomaly detection needs at least 2 periods worth of data'
+    ###########################################################################
+    # Changing below code. If the data contains broken dates then the data.size may be less than observation periods
+    # so for such cases, we should return empty obsevations
+    ###########################################################################
+    #assert data.size >= num_obs_per_period * \
+    #    2, 'Anomaly detection needs at least 2 periods worth of data'
+    if data.size < num_obs_per_period * 2:
+        return {
+                'anoms': pd.Series(), #return empty series
+                'stl': data #return untouched data...
+        }
+    # test case can be any data set which has large gapes in the dates.
+    # like data contains dates from year 2000 till 2020 but for 2001, 2001-01-01 till 2001-01-04 and then from 2001-06-01. 
+    # this will break the obs_period and data.size check. So I have just removed anomaly detection for these small patches.
+    ###########################################################################
+    
     assert data[data.isnull(
     )].empty, 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
