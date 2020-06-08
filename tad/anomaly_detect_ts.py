@@ -513,7 +513,6 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         #num_days_per_line
         #breaks = _get_plot_breaks(granularity, only_last)
         # x_subset_week
-        
         ret_plot = _plot_anomalies(data, ret_val)
         ret_val['plot'] = ret_plot
 
@@ -534,14 +533,14 @@ def _plot_anomalies(data, results):
     df_plot = pd.DataFrame(data).join(anoms, how='left')
     #df_plot = df_plot.fillna(0) #if no anomaly, then we will plot a zero. can be improved.
     df_plot['anoms'].unique()
-    plt.subplots(figsize=(14,6))
-    plt.plot(df_plot['anoms'], color='r', marker='o', label='Anomaly', linestyle="None")
-    plt.plot(data, label=data.name)
-    plt.title(data.name)
-    plt.legend(loc='best')
-    plt.grid(b=True)
+    f, ax = plt.subplots(figsize=(14,6))
+    ax.plot(df_plot['anoms'], color='r', marker='o', label='Anomaly', linestyle="None")
+    ax.plot(data, label=data.name)
+    ax.set_title(data.name)
+    ax.legend(loc='best')
+    ax.grid(b=True)
     #plt.show()
-    return plt
+    return ax
 
 def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
