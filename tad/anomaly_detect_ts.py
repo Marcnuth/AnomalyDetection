@@ -57,8 +57,7 @@ piecewise_median_period_weeks: The piecewise median time window as
 
    title: Title for the output plot.
 
- verbose: Enable debug messages
- 
+ verbose: Enable debug messages 
  resampling: whether ms or sec granularity should be resampled to min granularity. 
              Defaults to False.
              
@@ -155,7 +154,6 @@ def _handle_granularity_error(level):
       level : String
         the granularity that is below the min threshold
     """
-    
     #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines 
     #will cause issues with the module. Ideally, user should only supply single KPI for a single dimension with timestamp.
     
@@ -398,8 +396,9 @@ def _get_max_outliers(data, max_percent_anomalies):
         the input maximum number of anomalies per percent of data set values
     """
     max_outliers = int(np.trunc(data.size * max_percent_anomalies))
-    assert max_outliers, 'With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(
-        data.size)
+    if not max_outliers:
+        raise ValueError('With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(
+        data.size))
     return max_outliers
 
 
@@ -429,15 +428,23 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         logger.debug("The debug logs will be logged because verbose=%s", verbose)
 
     # validation
-    assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
+    if isinstance(x, pd.Series) == False:
+        raise AttributeError('Data must be a series(Pandas.Series)')
     #changing below as apparantly the large integer data like int64 was not captured by below
-    assert x.values.dtype in [int, float, 'int64'], 'Values of the series must be number'
-    assert x.index.dtype == np.dtype('datetime64[ns]'), 'Index of the series must be datetime'
-    assert max_anoms <= 0.49 and max_anoms >= 0, 'max_anoms must be non-negative and less than 50% '
-    assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
-    assert only_last in [None, 'day', 'hr'], 'only_last options: None | day | hr'
-    assert threshold in [None, 'med_max', 'p95', 'p99'], 'threshold options: None | med_max | p95 | p99'
-    assert piecewise_median_period_weeks >= 2, 'piecewise_median_period_weeks must be greater than 2 weeks'
+    if x.values.dtype not in [int, float, 'int64']: 
+        raise ValueError('Values of the series must be number')
+    if x.index.dtype != np.dtype('datetime64[ns]'):
+        raise ValueError('Index of the series must be datetime')
+    if max_anoms > 0.49 or max_anoms < 0: 
+        raise AttributeError('max_anoms must be non-negative and less than 50% ')
+    if direction not in ['pos', 'neg', 'both']:
+        raise AttributeError('direction options: pos | neg | both')
+    if only_last not in [None, 'day', 'hr']:
+        raise AttributeError('only_last options: None | day | hr')
+    if threshold not in [None, 'med_max', 'p95', 'p99']:
+        raise AttributeError('threshold options: None | med_max | p95 | p99')
+    if piecewise_median_period_weeks < 2:
+        raise AttributeError('piecewise_median_period_weeks must be greater than 2 weeks')
     logger.debug('Completed validation of input parameters')
 
     if alpha < 0.01 or alpha > 0.1:
