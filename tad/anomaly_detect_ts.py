@@ -57,7 +57,8 @@ piecewise_median_period_weeks: The piecewise median time window as
 
    title: Title for the output plot.
 
- verbose: Enable debug messages 
+ verbose: Enable debug messages
+ 
  resampling: whether ms or sec granularity should be resampled to min granularity. 
              Defaults to False.
              
@@ -154,7 +155,7 @@ def _handle_granularity_error(level):
       level : String
         the granularity that is below the min threshold
     """
-    #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines 
+    #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines
     #will cause issues with the module. Ideally, user should only supply single KPI for a single dimension with timestamp.
     
     e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling. Please check if you are using multiple dimensions with same timestamps in the data which cause repetition of same timestamps.' % level
@@ -431,11 +432,11 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     if isinstance(x, pd.Series) == False:
         raise AttributeError('Data must be a series(Pandas.Series)')
     #changing below as apparantly the large integer data like int64 was not captured by below
-    if x.values.dtype not in [int, float, 'int64']: 
+    if x.values.dtype not in [int, float, 'int64']:
         raise ValueError('Values of the series must be number')
     if x.index.dtype != np.dtype('datetime64[ns]'):
         raise ValueError('Index of the series must be datetime')
-    if max_anoms > 0.49 or max_anoms < 0: 
+    if max_anoms > 0.49 or max_anoms < 0:
         raise AttributeError('max_anoms must be non-negative and less than 50% ')
     if direction not in ['pos', 'neg', 'both']:
         raise AttributeError('direction options: pos | neg | both')
@@ -451,8 +452,9 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         logger.warning('alpha is the statistical significance and is usually between 0.01 and 0.1')
 
     data, period, granularity = _get_data_tuple(x, period_override, resampling)
-    if granularity is 'day':
+    if granularity == 'day':
         num_days_per_line = 7
+        logger.info("Recording the variable in case plot function needs it. gran = day. {}".format(num_days_per_line))
         only_last = 'day' if only_last == 'hr' else only_last
 
     max_anoms = _get_max_anoms(data, max_anoms)
@@ -533,8 +535,7 @@ def _plot_anomalies(data, results):
     #df_plot = df_plot.fillna(0) #if no anomaly, then we will plot a zero. can be improved.
     df_plot['anoms'].unique()
     plt.subplots(figsize=(14,6))
-    plt.plot(df_plot['anoms'], color='r', marker='o', 
-             label='Anomaly', linestyle="None")
+    plt.plot(df_plot['anoms'], color='r', marker='o', label='Anomaly', linestyle="None")
     plt.plot(data, label=data.name)
     plt.title(data.name)
     plt.legend(loc='best')
@@ -578,7 +579,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                 'stl': data #return untouched data...
         }
     # test case can be any data set which has large gapes in the dates.
-    # like data contains dates from year 2000 till 2020 but for 2001, 2001-01-01 till 2001-01-04 and then from 2001-06-01. 
+    # like data contains dates from year 2000 till 2020 but for 2001, 2001-01-01 till 2001-01-04 and then from 2001-06-01.
     # this will break the obs_period and data.size check. So I have just removed anomaly detection for these small patches.
     ###########################################################################
     
