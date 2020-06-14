@@ -58,10 +58,10 @@ piecewise_median_period_weeks: The piecewise median time window as
    title: Title for the output plot.
 
  verbose: Enable debug messages
- 
- resampling: whether ms or sec granularity should be resampled to min granularity. 
+
+ resampling: whether ms or sec granularity should be resampled to min granularity.
              Defaults to False.
-             
+
  period_override: Override the auto-generated period
                   Defaults to None
 
@@ -141,7 +141,7 @@ import pandas as pd
 import datetime
 import statsmodels.api as sm
 import logging
-
+import matplotlib.pyplot as plt #this will be used for plotting.
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,10 @@ def _handle_granularity_error(level):
       level : String
         the granularity that is below the min threshold
     """
-    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling' % level
+    #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines
+    #will cause issues with the module. Ideally, user should only supply single KPI for a single dimension with timestamp.
+
+    e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling. Please check if you are using multiple dimensions with same timestamps in the data which cause repetition of same timestamps.' % level
     raise ValueError(e_message)
 
 
@@ -325,20 +328,26 @@ def _get_only_last_results(data, all_anoms, granularity, only_last):
       only_last : string day | hr
         The subset of anomalies to be returned
     """
-    start_date = data.index[-1] - datetime.timedelta(days=7)
+
+    #Unused variables start_date and x_subset_week were commented by aliasgherman
+    # on 2020-06-13 as the plot logic does not utilize them for now.
+    #start_date = data.index[-1] - datetime.timedelta(days=7)
     start_anoms = data.index[-1] - datetime.timedelta(days=1)
 
     if only_last == 'hr':
         # We need to change start_date and start_anoms for the hourly only_last option
-        start_date = datetime.datetime.combine(
-            (data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
+        #start_date = datetime.datetime.combine(
+        #    (data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
         start_anoms = data.index[-1] - datetime.timedelta(hours=1)
 
     # subset the last days worth of data
     x_subset_single_day = data.loc[data.index > start_anoms]
     # When plotting anoms for the last day only we only show the previous weeks data
-    x_subset_week = data.loc[lambda df: (
-        df.index <= start_anoms) & (df.index > start_date)]
+    ## Below was commented out by aliasgherman as the plot logic (v001)
+    ##  does not use this variable and plots whole dataset.
+    ##x_subset_week = data.loc[lambda df: (
+    ##    df.index <= start_anoms) & (df.index > start_date)]
+    #
     return all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
 
 
@@ -394,8 +403,9 @@ def _get_max_outliers(data, max_percent_anomalies):
         the input maximum number of anomalies per percent of data set values
     """
     max_outliers = int(np.trunc(data.size * max_percent_anomalies))
-    assert max_outliers, 'With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(
-        data.size)
+    if not max_outliers:
+        raise ValueError('With longterm=True, AnomalyDetection splits the data into 2 week periods by default. You have {0} observations in a period, which is too few. Set a higher piecewise_median_period_weeks.'.format(
+        data.size))
     return max_outliers
 
 
@@ -425,28 +435,38 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         logger.debug("The debug logs will be logged because verbose=%s", verbose)
 
     # validation
-    assert isinstance(x, pd.Series), 'Data must be a series(Pandas.Series)'
-    assert x.values.dtype in [int, float], 'Values of the series must be number'
-    assert x.index.dtype == np.dtype('datetime64[ns]'), 'Index of the series must be datetime'
-    assert max_anoms <= 0.49 and max_anoms >= 0, 'max_anoms must be non-negative and less than 50% '
-    assert direction in ['pos', 'neg', 'both'], 'direction options: pos | neg | both'
-    assert only_last in [None, 'day', 'hr'], 'only_last options: None | day | hr'
-    assert threshold in [None, 'med_max', 'p95', 'p99'], 'threshold options: None | med_max | p95 | p99'
-    assert piecewise_median_period_weeks >= 2, 'piecewise_median_period_weeks must be greater than 2 weeks'
+    if isinstance(x, pd.Series) == False:
+        raise AssertionError('Data must be a series(Pandas.Series)')
+    #changing below as apparantly the large integer data like int64 was not captured by below
+    if x.values.dtype not in [int, float, 'int64']:
+        raise ValueError('Values of the series must be number')
+    if x.index.dtype != np.dtype('datetime64[ns]'):
+        raise ValueError('Index of the series must be datetime')
+    if max_anoms > 0.49 or max_anoms < 0:
+        raise AttributeError('max_anoms must be non-negative and less than 50% ')
+    if direction not in ['pos', 'neg', 'both']:
+        raise AttributeError('direction options: pos | neg | both')
+    if only_last not in [None, 'day', 'hr']:
+        raise AttributeError('only_last options: None | day | hr')
+    if threshold not in [None, 'med_max', 'p95', 'p99']:
+        raise AttributeError('threshold options: None | med_max | p95 | p99')
+    if piecewise_median_period_weeks < 2:
+        raise AttributeError('piecewise_median_period_weeks must be greater than 2 weeks')
     logger.debug('Completed validation of input parameters')
 
     if alpha < 0.01 or alpha > 0.1:
         logger.warning('alpha is the statistical significance and is usually between 0.01 and 0.1')
 
     data, period, granularity = _get_data_tuple(x, period_override, resampling)
-    if granularity is 'day':
+    if granularity == 'day':
         num_days_per_line = 7
+        logger.info("Recording the variable in case plot function needs it. gran = day. {}".format(num_days_per_line))
         only_last = 'day' if only_last == 'hr' else only_last
 
     max_anoms = _get_max_anoms(data, max_anoms)
 
     # If longterm is enabled, break the data into subset data frames and store in all_data
-    all_data = _process_long_term_data(data, period, granularity, piecewise_median_period_weeks) if longterm else [data] 
+    all_data = _process_long_term_data(data, period, granularity, piecewise_median_period_weeks) if longterm else [data]
     all_anoms = pd.Series()
     seasonal_plus_trend = pd.Series()
 
@@ -488,19 +508,45 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
             'plot': None
         }
 
-    if plot:
-        # TODO additional refactoring and logic needed to support plotting
-        num_days_per_line
-        #breaks = _get_plot_breaks(granularity, only_last)
-        # x_subset_week
-        raise Exception('TODO: Unsupported now')
-
-    return {
+    ret_val = {
         'anoms': all_anoms,
         'expected': seasonal_plus_trend if e_value else None,
         'plot': 'TODO' if plot else None
     }
 
+    if plot:
+        # TODO additional refactoring and logic needed to support plotting
+        #num_days_per_line
+        #breaks = _get_plot_breaks(granularity, only_last)
+        # x_subset_week
+        ret_plot = _plot_anomalies(data, ret_val)
+        ret_val['plot'] = ret_plot
+
+
+        #raise Exception('TODO: Unsupported now')
+
+    return ret_val
+
+def _plot_anomalies(data, results):
+    """
+        Tries to plot the data and the anomalies detected in this data.
+
+    ArgsL
+        data: Time series on which we are performing the anomaly detection. (full data)
+        results: the results dictionary which contains anomalies grouped in the key called 'anoms'
+    """
+    anoms = pd.DataFrame(results)
+    df_plot = pd.DataFrame(data).join(anoms, how='left')
+    #df_plot = df_plot.fillna(0) #if no anomaly, then we will plot a zero. can be improved.
+    df_plot['anoms'].unique()
+    _, ax = plt.subplots(figsize=(14,6))
+    ax.plot(df_plot['anoms'], color='r', marker='o', label='Anomaly', linestyle="None")
+    ax.plot(data, label=data.name)
+    ax.set_title(data.name)
+    ax.legend(loc='best')
+    ax.grid(b=True)
+    #plt.show()
+    return ax
 
 def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
                   use_decomp=True, use_esd=False, direction="pos", verbose=False):
@@ -522,11 +568,26 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     """
 
     # validation
+
     assert num_obs_per_period, "must supply period length for time series decomposition"
     assert direction in ['pos', 'neg',
                          'both'], 'direction options: pos | neg | both'
-    assert data.size >= num_obs_per_period * \
-        2, 'Anomaly detection needs at least 2 periods worth of data'
+    ###########################################################################
+    # Changing below code. If the data contains broken dates then the data.size may be less than observation periods
+    # so for such cases, we should return empty obsevations
+    ###########################################################################
+    #assert data.size >= num_obs_per_period * \
+    #    2, 'Anomaly detection needs at least 2 periods worth of data'
+    if data.size < num_obs_per_period * 2:
+        return {
+                'anoms': pd.Series(), #return empty series
+                'stl': data #return untouched data...
+        }
+    # test case can be any data set which has large gapes in the dates.
+    # like data contains dates from year 2000 till 2020 but for 2001, 2001-01-01 till 2001-01-04 and then from 2001-06-01.
+    # this will break the obs_period and data.size check. So I have just removed anomaly detection for these small patches.
+    ###########################################################################
+
     assert data[data.isnull(
     )].empty, 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
