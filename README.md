@@ -30,10 +30,16 @@ import tad
 import pandas as pd 
 import matplotlib.pyplot as plt
 
-a = pd.DataFrame({'numeric_data_col1': [1,1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1, 1, 1]}, index=pd.to_datetime(['2020-01-01', '2020-01-02', '2020-01-03','2020-01-04','2020-01-05','2020-01-06','2020-01-07','2020-01-08','2020-01-09','2020-01-10','2020-01-11','2020-01-12','2020-01-13','2020-01-14']))
+a = pd.DataFrame({'numeric_data_col1': 
+        [1,1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1, 1, 1]}, 
+        index=pd.to_datetime(['2020-01-01', '2020-01-02', '2020-01-03',
+        '2020-01-04', '2020-01-05','2020-01-06','2020-01-07','2020-01-08',
+        '2020-01-09','2020-01-10','2020-01-11','2020-01-12','2020-01-13',
+        '2020-01-14']))
 
 results = anomaly_detect_ts(a['numeric_data_col1'],
-                                              direction='both', alpha=0.02, max_anoms=0.20,
+                                              direction='both', alpha=0.02,
+                                              max_anoms=0.20,
                                               plot=True, longterm=True)
 if results['plot']: #some anoms were detected and plot was also True.
     plt.show()
@@ -51,7 +57,9 @@ results
 Output shall be in the results dict
 
 results['anoms'] : contains the anomalies detected
+
 results['plot']: contains a matplotlib plot if anoms were detected and plot was True
+
 results['expected'] : tries to return expected values for certain dates. TODO: inconsistent as provides different outputs compared to anoms
 
 ![Sample Script output](/resources/images/sample_execution.png)
