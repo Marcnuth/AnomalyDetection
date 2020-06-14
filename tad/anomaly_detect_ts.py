@@ -58,10 +58,10 @@ piecewise_median_period_weeks: The piecewise median time window as
    title: Title for the output plot.
 
  verbose: Enable debug messages
- 
- resampling: whether ms or sec granularity should be resampled to min granularity. 
+
+ resampling: whether ms or sec granularity should be resampled to min granularity.
              Defaults to False.
-             
+
  period_override: Override the auto-generated period
                   Defaults to None
 
@@ -157,7 +157,7 @@ def _handle_granularity_error(level):
     """
     #improving the message as if user selects Timestamp, Dimension, Value sort of data then repeated timelines
     #will cause issues with the module. Ideally, user should only supply single KPI for a single dimension with timestamp.
-    
+
     e_message = '%s granularity is not supported. Ensure granularity => minute or enable resampling. Please check if you are using multiple dimensions with same timestamps in the data which cause repetition of same timestamps.' % level
     raise ValueError(e_message)
 
@@ -328,20 +328,26 @@ def _get_only_last_results(data, all_anoms, granularity, only_last):
       only_last : string day | hr
         The subset of anomalies to be returned
     """
-    start_date = data.index[-1] - datetime.timedelta(days=7)
+
+    #Unused variables start_date and x_subset_week were commented by aliasgherman
+    # on 2020-06-13 as the plot logic does not utilize them for now.
+    #start_date = data.index[-1] - datetime.timedelta(days=7)
     start_anoms = data.index[-1] - datetime.timedelta(days=1)
 
     if only_last == 'hr':
         # We need to change start_date and start_anoms for the hourly only_last option
-        start_date = datetime.datetime.combine(
-            (data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
+        #start_date = datetime.datetime.combine(
+        #    (data.index[-1] - datetime.timedelta(days=2)).date(), datetime.time.min)
         start_anoms = data.index[-1] - datetime.timedelta(hours=1)
 
     # subset the last days worth of data
     x_subset_single_day = data.loc[data.index > start_anoms]
     # When plotting anoms for the last day only we only show the previous weeks data
-    x_subset_week = data.loc[lambda df: (
-        df.index <= start_anoms) & (df.index > start_date)]
+    ## Below was commented out by aliasgherman as the plot logic (v001)
+    ##  does not use this variable and plots whole dataset.
+    ##x_subset_week = data.loc[lambda df: (
+    ##    df.index <= start_anoms) & (df.index > start_date)]
+    #
     return all_anoms.loc[all_anoms.index >= x_subset_single_day.index[0]]
 
 
@@ -430,7 +436,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 
     # validation
     if isinstance(x, pd.Series) == False:
-        raise AttributeError('Data must be a series(Pandas.Series)')
+        raise AssertionError('Data must be a series(Pandas.Series)')
     #changing below as apparantly the large integer data like int64 was not captured by below
     if x.values.dtype not in [int, float, 'int64']:
         raise ValueError('Values of the series must be number')
@@ -460,7 +466,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
     max_anoms = _get_max_anoms(data, max_anoms)
 
     # If longterm is enabled, break the data into subset data frames and store in all_data
-    all_data = _process_long_term_data(data, period, granularity, piecewise_median_period_weeks) if longterm else [data] 
+    all_data = _process_long_term_data(data, period, granularity, piecewise_median_period_weeks) if longterm else [data]
     all_anoms = pd.Series()
     seasonal_plus_trend = pd.Series()
 
@@ -516,7 +522,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         ret_plot = _plot_anomalies(data, ret_val)
         ret_val['plot'] = ret_plot
 
-        
+
         #raise Exception('TODO: Unsupported now')
 
     return ret_val
@@ -524,7 +530,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
 def _plot_anomalies(data, results):
     """
         Tries to plot the data and the anomalies detected in this data.
-        
+
     ArgsL
         data: Time series on which we are performing the anomaly detection. (full data)
         results: the results dictionary which contains anomalies grouped in the key called 'anoms'
@@ -581,7 +587,7 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
     # like data contains dates from year 2000 till 2020 but for 2001, 2001-01-01 till 2001-01-04 and then from 2001-06-01.
     # this will break the obs_period and data.size check. So I have just removed anomaly detection for these small patches.
     ###########################################################################
-    
+
     assert data[data.isnull(
     )].empty, 'Data contains NA. We suggest replacing NA with interpolated values before detecting anomaly'
 
