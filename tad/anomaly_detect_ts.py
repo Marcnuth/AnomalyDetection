@@ -539,7 +539,7 @@ def _plot_anomalies(data, results):
     df_plot = pd.DataFrame(data).join(anoms, how='left')
     #df_plot = df_plot.fillna(0) #if no anomaly, then we will plot a zero. can be improved.
     df_plot['anoms'].unique()
-    f, ax = plt.subplots(figsize=(14,6))
+    _, ax = plt.subplots(figsize=(14,6))
     ax.plot(df_plot['anoms'], color='r', marker='o', label='Anomaly', linestyle="None")
     ax.plot(data, label=data.name)
     ax.set_title(data.name)

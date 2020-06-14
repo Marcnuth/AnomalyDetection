@@ -10,17 +10,15 @@ Although there are some repos for python to run twitter's anomaly detection algo
 
 This repo aims for rewriting twitter's Anomaly Detection algorithms in Python, and providing same functions for user.
 
-
 ## Install
 
 ```
 pip3 install tad
 ```
-
 ## Requirement
 
-1. The data should have the Index which is a datetime type. Single series is processed so only pass single numeric series at a time.
-2. Plotting function is based on matplotlib, the plot is retured in the results if user wants to change any appearnaces etc.
+1.The data should have the Index which is a datetime type. Single series is processed so only pass single numeric series at a time.
+2.Plotting function is based on matplotlib, the plot is retured in the results if user wants to change any appearnaces etc.
 
 ## Usage
 
@@ -52,18 +50,15 @@ results
  'expected': None,
  'plot': <matplotlib.axes._subplots.AxesSubplot at 0x29b827b2748>}
 
-
-
 Output shall be in the results dict
 
-results['anoms'] : contains the anomalies detected
+results.anoms shall contain the anomalies detected
 
-results['plot']: contains a matplotlib plot if anoms were detected and plot was True
+results.plot shall contain a matplotlib plot if anoms were detected and plot was True
 
-results['expected'] : tries to return expected values for certain dates. TODO: inconsistent as provides different outputs compared to anoms
+results.expected tries to return expected values for certain dates. TODO: inconsistent as provides different outputs compared to anoms
 
 ![Sample Script output](/resources/images/sample_execution.png)
-
 
 ## Other Sample Images
 
