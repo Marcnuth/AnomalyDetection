@@ -54,3 +54,9 @@ results['anoms'] : contains the anomalies detected
 results['plot']: contains a matplotlib plot if anoms were detected and plot was True
 results['expected'] : tries to return expected values for certain dates. TODO: inconsistent as provides different outputs compared to anoms
 
+![Sample Script output](/resources/images/sample_execution.png)
+
+
+## Other Sample Images
+
+![Another sample of detecction using default parameters](/resources/images/sample_01.png)
