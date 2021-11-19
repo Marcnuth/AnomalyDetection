@@ -409,7 +409,7 @@ def _get_decomposed_data_tuple(data, num_obs_per_period):
         the number of observations in each period
     """
     decomposed = sm.tsa.seasonal_decompose(
-        data, freq=num_obs_per_period, two_sided=False)
+        data, period=num_obs_per_period, two_sided=False)
     smoothed = data - decomposed.resid.fillna(0)
     data = data - decomposed.seasonal - data.mean()
     return (data, smoothed)
