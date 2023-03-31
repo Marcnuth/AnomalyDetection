@@ -409,7 +409,7 @@ def _get_decomposed_data_tuple(data, num_obs_per_period):
         the number of observations in each period
     """
     decomposed = sm.tsa.seasonal_decompose(
-        data, freq=num_obs_per_period, two_sided=False)
+        data, period=num_obs_per_period, two_sided=False)
     smoothed = data - decomposed.resid.fillna(0)
     data = data - decomposed.seasonal - data.mean()
     return (data, smoothed)
@@ -439,7 +439,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         logger.warning('alpha is the statistical significance and is usually between 0.01 and 0.1')
 
     data, period, granularity = _get_data_tuple(x, period_override, resampling)
-    if granularity is 'day':
+    if granularity == 'day':
         num_days_per_line = 7
         only_last = 'day' if only_last == 'hr' else only_last
 
@@ -470,7 +470,7 @@ def anomaly_detect_ts(x, max_anoms=0.1, direction="pos", alpha=0.05, only_last=N
         seasonal_plus_trend = seasonal_plus_trend.append(shesd_stl)
 
     # De-dupe
-    all_anoms.drop_duplicates(inplace=True)
+    all_anoms[~all_anoms.index.duplicated(keep='first')]
     seasonal_plus_trend.drop_duplicates(inplace=True)
 
     # If only_last is specified, create a subset of the data corresponding to the most recent day or hour
@@ -566,7 +566,12 @@ def _detect_anoms(data, k=0.49, alpha=0.05, num_obs_per_period=None,
         ares = ares / data.mad()
 
         tmp_anom_index = ares[ares.values == ares.max()].index
-        cand = pd.Series(data.loc[tmp_anom_index], index=tmp_anom_index)
+        try:
+            cand = pd.Series(data.loc[tmp_anom_index], index=tmp_anom_index)
+        except ValueError:
+            # drop the index duplicates but keep first and try again
+            cand = pd.Series(data.loc[tmp_anom_index][~data.loc[tmp_anom_index].index.duplicated(keep='first')],
+                             index=tmp_anom_index)
 
         data.drop(tmp_anom_index, inplace=True)
 
